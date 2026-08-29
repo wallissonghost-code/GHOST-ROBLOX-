@@ -1,5 +1,6 @@
 local Config = {}
 
+-- CI deploy marker: gameplay values below are unchanged.
 Config.START_COINS = 1000
 Config.BASE_INVENTORY_SLOTS = 50
 Config.MARKET_FEE = 0.08
