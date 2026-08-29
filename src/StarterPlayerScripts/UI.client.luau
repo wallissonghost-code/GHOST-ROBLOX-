@@ -22,14 +22,10 @@ local BiomeChanged=remotes.BiomeChanged
 local RollResult=remotes.RollResult
 local EquipItem=remotes.EquipItem
 
-local state={
-    coins=0,luckLevel=0,autoRoll=false,quickRoll=false,pity=0,
-    inventory={},inventoryCap=50,market={},biome={name="Normal"},equippedUid=nil
-}
-
+local state={coins=0,luckLevel=0,autoRoll=false,quickRoll=false,pity=0,inventory={},inventoryCap=50,market={},biome={name="Normal"},equippedUid=nil}
 local equippedModel=nil
-local equippedItem=nil
 local listingItem=nil
+local activePanel=nil
 
 local function fmt(n)
     n=tonumber(n) or 0
@@ -41,271 +37,302 @@ local function fmt(n)
     return tostring(math.floor(n))
 end
 
-local function corner(instance,radius)
+local function corner(obj,r)
     local c=Instance.new("UICorner")
-    c.CornerRadius=UDim.new(0,radius or 10)
-    c.Parent=instance
+    c.CornerRadius=UDim.new(0,r or 10)
+    c.Parent=obj
+end
+
+local function stroke(obj,t)
+    local s=Instance.new("UIStroke")
+    s.Thickness=t or 1
+    s.Transparency=.45
+    s.Parent=obj
 end
 
 local gui=Instance.new("ScreenGui")
-gui.Name="RelicMarketRNGV4"
+gui.Name="RelicMarketRNGV5"
 gui.ResetOnSpawn=false
 gui.IgnoreGuiInset=false
 gui.Parent=player:WaitForChild("PlayerGui")
 
-local top=Instance.new("TextLabel")
-top.Size=UDim2.new(1,0,0,66)
-top.BackgroundColor3=Color3.fromRGB(18,18,24)
-top.TextColor3=Color3.new(1,1,1)
-top.Font=Enum.Font.GothamBold
-top.TextScaled=true
-top.Parent=gui
+local stats=Instance.new("TextLabel")
+stats.AnchorPoint=Vector2.new(1,0)
+stats.Position=UDim2.new(1,-16,0,12)
+stats.Size=UDim2.fromOffset(430,42)
+stats.BackgroundColor3=Color3.fromRGB(17,17,22)
+stats.BackgroundTransparency=.12
+stats.TextColor3=Color3.new(1,1,1)
+stats.Font=Enum.Font.GothamBold
+stats.TextSize=19
+stats.TextXAlignment=Enum.TextXAlignment.Center
+stats.Parent=gui
+corner(stats,12)
+stroke(stats,1)
+
+local side=Instance.new("Frame")
+side.Position=UDim2.fromOffset(14,90)
+side.Size=UDim2.fromOffset(132,112)
+side.BackgroundTransparency=1
+side.Parent=gui
+
+local function menuButton(text,y)
+    local b=Instance.new("TextButton")
+    b.Position=UDim2.fromOffset(0,y)
+    b.Size=UDim2.fromOffset(132,48)
+    b.BackgroundColor3=Color3.fromRGB(37,35,48)
+    b.TextColor3=Color3.new(1,1,1)
+    b.Font=Enum.Font.GothamBold
+    b.TextSize=16
+    b.Text=text
+    b.Parent=side
+    corner(b,10)
+    stroke(b,1)
+    return b
+end
+
+local invOpen=menuButton("🎒 INVENTÁRIO",0)
+local marketOpen=menuButton("🏪 MERCADO",56)
 
 local controls=Instance.new("Frame")
-controls.AnchorPoint=Vector2.new(0.5,1)
-controls.Position=UDim2.fromScale(0.5,0.98)
-controls.Size=UDim2.fromOffset(620,66)
+controls.AnchorPoint=Vector2.new(.5,1)
+controls.Position=UDim2.new(.5,0,1,-18)
+controls.Size=UDim2.fromOffset(474,58)
 controls.BackgroundTransparency=1
 controls.Parent=gui
 
-local function button(txt,x)
+local function control(text,x,w)
     local b=Instance.new("TextButton")
-    b.Size=UDim2.fromOffset(145,58)
-    b.Position=UDim2.fromOffset(x,4)
-    b.Text=txt
-    b.Font=Enum.Font.GothamBlack
-    b.TextScaled=true
+    b.Position=UDim2.fromOffset(x,0)
+    b.Size=UDim2.fromOffset(w,54)
+    b.BackgroundColor3=Color3.fromRGB(88,61,166)
     b.TextColor3=Color3.new(1,1,1)
-    b.BackgroundColor3=Color3.fromRGB(86,62,160)
+    b.Font=Enum.Font.GothamBlack
+    b.TextSize=19
+    b.Text=text
     b.Parent=controls
     corner(b,12)
     return b
 end
 
-local rollBtn=button("ROLL",0)
-local autoBtn=button("AUTO",155)
-local quickBtn=button("QUICK",310)
-local luckBtn=button("LUCK+",465)
+local rollBtn=control("ROLL",0,118)
+local autoBtn=control("AUTO",126,105)
+local quickBtn=control("QUICK",239,105)
+local luckBtn=control("LUCK+",352,118)
 
-local function panelTitle(text,pos,size)
-    local t=Instance.new("TextLabel")
-    t.Position=pos
-    t.Size=size
-    t.BackgroundTransparency=1
-    t.Text=text
-    t.TextColor3=Color3.new(1,1,1)
-    t.Font=Enum.Font.GothamBlack
-    t.TextScaled=true
-    t.Parent=gui
-    return t
+local function makePanel(title)
+    local p=Instance.new("Frame")
+    p.AnchorPoint=Vector2.new(.5,.5)
+    p.Position=UDim2.fromScale(.5,.5)
+    p.Size=UDim2.new(0,520,0,520)
+    p.BackgroundColor3=Color3.fromRGB(20,20,26)
+    p.BackgroundTransparency=.04
+    p.Visible=false
+    p.ZIndex=10
+    p.Parent=gui
+    corner(p,16)
+    stroke(p,1)
+
+    local head=Instance.new("TextLabel")
+    head.Position=UDim2.fromOffset(16,10)
+    head.Size=UDim2.new(1,-70,0,42)
+    head.BackgroundTransparency=1
+    head.Text=title
+    head.TextColor3=Color3.new(1,1,1)
+    head.Font=Enum.Font.GothamBlack
+    head.TextSize=24
+    head.TextXAlignment=Enum.TextXAlignment.Left
+    head.ZIndex=11
+    head.Parent=p
+
+    local close=Instance.new("TextButton")
+    close.AnchorPoint=Vector2.new(1,0)
+    close.Position=UDim2.new(1,-12,0,10)
+    close.Size=UDim2.fromOffset(42,42)
+    close.BackgroundColor3=Color3.fromRGB(70,55,80)
+    close.Text="✕"
+    close.TextColor3=Color3.new(1,1,1)
+    close.Font=Enum.Font.GothamBold
+    close.TextSize=20
+    close.ZIndex=12
+    close.Parent=p
+    corner(close,10)
+
+    local scroll=Instance.new("ScrollingFrame")
+    scroll.Position=UDim2.fromOffset(12,64)
+    scroll.Size=UDim2.new(1,-24,1,-76)
+    scroll.BackgroundTransparency=1
+    scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+    scroll.CanvasSize=UDim2.new()
+    scroll.ScrollBarThickness=6
+    scroll.ZIndex=11
+    scroll.Parent=p
+
+    local layout=Instance.new("UIListLayout")
+    layout.Padding=UDim.new(0,8)
+    layout.Parent=scroll
+
+    close.MouseButton1Click:Connect(function()
+        p.Visible=false
+        if activePanel==p then activePanel=nil end
+    end)
+
+    return p,scroll
 end
 
-panelTitle("INVENTÁRIO",UDim2.fromOffset(10,72),UDim2.new(0.49,-15,0,32))
-panelTitle("MERCADO",UDim2.new(0.51,5,0,72),UDim2.new(0.49,-15,0,32))
+local invPanel,invScroll=makePanel("INVENTÁRIO")
+local marketPanel,marketScroll=makePanel("MERCADO")
 
-local left=Instance.new("ScrollingFrame")
-left.Position=UDim2.fromOffset(10,108)
-left.Size=UDim2.new(0.49,-15,1,-196)
-left.BackgroundColor3=Color3.fromRGB(27,27,33)
-left.AutomaticCanvasSize=Enum.AutomaticSize.Y
-left.CanvasSize=UDim2.new()
-left.ScrollBarThickness=6
-left.Parent=gui
-corner(left,12)
+local function showPanel(panel)
+    if activePanel and activePanel~=panel then activePanel.Visible=false end
+    panel.Visible=not panel.Visible
+    activePanel=panel.Visible and panel or nil
+end
 
-local right=left:Clone()
-right.AnchorPoint=Vector2.new(1,0)
-right.Position=UDim2.new(1,-10,0,108)
-right.Parent=gui
-
-local ll=Instance.new("UIListLayout")
-ll.Padding=UDim.new(0,6)
-ll.Parent=left
-ll:Clone().Parent=right
+invOpen.MouseButton1Click:Connect(function() showPanel(invPanel) end)
+marketOpen.MouseButton1Click:Connect(function() showPanel(marketPanel) end)
 
 local notice=Instance.new("TextLabel")
-notice.AnchorPoint=Vector2.new(0.5,0)
-notice.Position=UDim2.fromScale(0.5,0.105)
-notice.Size=UDim2.new(0.75,0,0,48)
-notice.BackgroundColor3=Color3.fromRGB(10,10,12)
+notice.AnchorPoint=Vector2.new(.5,0)
+notice.Position=UDim2.new(.5,0,0,66)
+notice.Size=UDim2.new(0,560,0,46)
+notice.BackgroundColor3=Color3.fromRGB(12,12,16)
+notice.BackgroundTransparency=.08
 notice.TextColor3=Color3.new(1,1,1)
 notice.Font=Enum.Font.GothamBold
-notice.TextScaled=true
+notice.TextSize=18
 notice.Visible=false
-notice.ZIndex=20
+notice.ZIndex=30
 notice.Parent=gui
 corner(notice,10)
 
 local reveal=Instance.new("Frame")
-reveal.AnchorPoint=Vector2.new(0.5,0.5)
-reveal.Position=UDim2.fromScale(0.5,0.5)
-reveal.Size=UDim2.fromOffset(420,220)
+reveal.AnchorPoint=Vector2.new(.5,.5)
+reveal.Position=UDim2.fromScale(.5,.45)
+reveal.Size=UDim2.fromOffset(360,180)
 reveal.BackgroundColor3=Color3.fromRGB(20,20,28)
 reveal.Visible=false
-reveal.ZIndex=30
+reveal.ZIndex=35
 reveal.Parent=gui
 corner(reveal,18)
 
 local revealText=Instance.new("TextLabel")
-revealText.BackgroundTransparency=1
 revealText.Size=UDim2.fromScale(1,1)
+revealText.BackgroundTransparency=1
 revealText.TextColor3=Color3.new(1,1,1)
 revealText.Font=Enum.Font.GothamBlack
-revealText.TextScaled=true
+revealText.TextSize=24
 revealText.TextWrapped=true
-revealText.ZIndex=31
+revealText.ZIndex=36
 revealText.Parent=reveal
 
 local priceModal=Instance.new("Frame")
-priceModal.AnchorPoint=Vector2.new(0.5,0.5)
-priceModal.Position=UDim2.fromScale(0.5,0.5)
-priceModal.Size=UDim2.fromOffset(430,250)
+priceModal.AnchorPoint=Vector2.new(.5,.5)
+priceModal.Position=UDim2.fromScale(.5,.5)
+priceModal.Size=UDim2.fromOffset(390,230)
 priceModal.BackgroundColor3=Color3.fromRGB(21,21,28)
 priceModal.Visible=false
 priceModal.ZIndex=40
 priceModal.Parent=gui
-corner(priceModal,18)
+corner(priceModal,16)
 
 local priceTitle=Instance.new("TextLabel")
 priceTitle.Position=UDim2.fromOffset(16,14)
-priceTitle.Size=UDim2.new(1,-32,0,65)
+priceTitle.Size=UDim2.new(1,-32,0,52)
 priceTitle.BackgroundTransparency=1
 priceTitle.TextColor3=Color3.new(1,1,1)
 priceTitle.Font=Enum.Font.GothamBlack
-priceTitle.TextScaled=true
+priceTitle.TextSize=20
 priceTitle.TextWrapped=true
 priceTitle.ZIndex=41
 priceTitle.Parent=priceModal
 
 local priceBox=Instance.new("TextBox")
-priceBox.Position=UDim2.fromOffset(25,92)
-priceBox.Size=UDim2.new(1,-50,0,54)
-priceBox.BackgroundColor3=Color3.fromRGB(38,38,48)
+priceBox.Position=UDim2.fromOffset(24,82)
+priceBox.Size=UDim2.new(1,-48,0,50)
+priceBox.BackgroundColor3=Color3.fromRGB(39,39,48)
 priceBox.TextColor3=Color3.new(1,1,1)
+priceBox.Font=Enum.Font.GothamBold
+priceBox.TextSize=20
 priceBox.PlaceholderText="Preço em Coins"
 priceBox.ClearTextOnFocus=false
-priceBox.Font=Enum.Font.GothamBold
-priceBox.TextScaled=true
 priceBox.ZIndex=41
 priceBox.Parent=priceModal
 corner(priceBox,10)
 
 local confirmList=Instance.new("TextButton")
-confirmList.Position=UDim2.fromOffset(25,166)
-confirmList.Size=UDim2.new(0.58,-8,0,56)
+confirmList.Position=UDim2.fromOffset(24,154)
+confirmList.Size=UDim2.fromOffset(214,52)
+confirmList.BackgroundColor3=Color3.fromRGB(65,145,90)
 confirmList.Text="ANUNCIAR"
-confirmList.Font=Enum.Font.GothamBlack
-confirmList.TextScaled=true
 confirmList.TextColor3=Color3.new(1,1,1)
-confirmList.BackgroundColor3=Color3.fromRGB(64,150,93)
+confirmList.Font=Enum.Font.GothamBlack
+confirmList.TextSize=19
 confirmList.ZIndex=41
 confirmList.Parent=priceModal
 corner(confirmList,10)
 
 local cancelList=confirmList:Clone()
 cancelList.AnchorPoint=Vector2.new(1,0)
-cancelList.Position=UDim2.new(1,-25,0,166)
-cancelList.Size=UDim2.new(0.38,-8,0,56)
+cancelList.Position=UDim2.new(1,-24,0,154)
+cancelList.Size=UDim2.fromOffset(120,52)
+cancelList.BackgroundColor3=Color3.fromRGB(145,64,70)
 cancelList.Text="CANCELAR"
-cancelList.BackgroundColor3=Color3.fromRGB(140,65,70)
 cancelList.Parent=priceModal
 
-local function clear(frame)
-    for _,c in frame:GetChildren() do
-        if not c:IsA("UIListLayout") and not c:IsA("UICorner") then c:Destroy() end
+local function clear(scroll)
+    for _,c in scroll:GetChildren() do
+        if not c:IsA("UIListLayout") then c:Destroy() end
     end
 end
 
-local function actionButton(parent,text,xScale,widthScale,cb,disabled)
-    local b=Instance.new("TextButton")
-    b.AnchorPoint=Vector2.new(1,0.5)
-    b.Position=UDim2.new(xScale,-8,0.5,0)
-    b.Size=UDim2.new(widthScale,-4,0,46)
-    b.Text=text
-    b.Font=Enum.Font.GothamBold
-    b.TextScaled=true
-    b.TextColor3=Color3.new(1,1,1)
-    b.BackgroundColor3=disabled and Color3.fromRGB(70,70,78) or Color3.fromRGB(82,62,150)
-    b.AutoButtonColor=not disabled
-    b.Parent=parent
-    corner(b,8)
-    if not disabled then b.MouseButton1Click:Connect(cb) end
-    return b
-end
-
-local function inventoryRow(parent,item)
+local function row(scroll,text,actions)
     local f=Instance.new("Frame")
-    f.Size=UDim2.new(1,-8,0,86)
-    f.BackgroundColor3=Color3.fromRGB(39,39,46)
-    f.Parent=parent
+    f.Size=UDim2.new(1,-6,0,78)
+    f.BackgroundColor3=Color3.fromRGB(37,37,45)
+    f.ZIndex=12
+    f.Parent=scroll
     corner(f,10)
 
-    local l=Instance.new("TextLabel")
-    l.BackgroundTransparency=1
-    l.Position=UDim2.fromOffset(8,5)
-    l.Size=UDim2.new(0.58,-10,1,-10)
-    l.TextWrapped=true
-    l.TextXAlignment=Enum.TextXAlignment.Left
-    l.TextColor3=Color3.new(1,1,1)
-    l.Font=Enum.Font.Gotham
-    l.TextScaled=true
-    l.Text=string.format("%s [%s] #%04d\n1/%s • MV %s",item.relicName,item.mutationName,item.serial,fmt(item.combinedOneIn),fmt(item.marketValue or item.baseValue))
-    l.Parent=f
+    local label=Instance.new("TextLabel")
+    label.Position=UDim2.fromOffset(10,6)
+    label.Size=UDim2.new(1,-190,1,-12)
+    label.BackgroundTransparency=1
+    label.Text=text
+    label.TextColor3=Color3.new(1,1,1)
+    label.TextXAlignment=Enum.TextXAlignment.Left
+    label.TextWrapped=true
+    label.Font=Enum.Font.Gotham
+    label.TextSize=17
+    label.ZIndex=13
+    label.Parent=f
 
-    local isEquipped=state.equippedUid==item.uid
-    actionButton(f,isEquipped and "ON" or "EQUIP",0.79,0.19,function()
-        EquipItem:FireServer(item.uid)
-    end,false)
-
-    actionButton(f,item.listed and "LISTED" or "SELL",1,0.19,function()
-        listingItem=item
-        priceTitle.Text=string.format("ANUNCIAR %s #%04d",item.relicName,item.serial)
-        priceBox.Text=tostring(math.max(1,math.floor(item.marketValue or item.baseValue or 1)))
-        priceModal.Visible=true
-    end,item.listed==true)
-end
-
-local function marketRow(parent,listing)
-    local f=Instance.new("Frame")
-    f.Size=UDim2.new(1,-8,0,86)
-    f.BackgroundColor3=Color3.fromRGB(39,39,46)
-    f.Parent=parent
-    corner(f,10)
-
-    local l=Instance.new("TextLabel")
-    l.BackgroundTransparency=1
-    l.Position=UDim2.fromOffset(8,5)
-    l.Size=UDim2.new(0.70,-10,1,-10)
-    l.TextWrapped=true
-    l.TextXAlignment=Enum.TextXAlignment.Left
-    l.TextColor3=Color3.new(1,1,1)
-    l.Font=Enum.Font.Gotham
-    l.TextScaled=true
-    l.Text=string.format("%s [%s] #%04d\n%s Coins • %s",listing.item.relicName,listing.item.mutationName,listing.item.serial,fmt(listing.price),listing.sellerName)
-    l.Parent=f
-
-    local ownListing=listing.sellerUserId==player.UserId
-    actionButton(f,ownListing and "CANCEL" or "BUY",1,0.27,function()
-        if ownListing then
-            CancelListing:FireServer(listing.listingId)
-        else
-            BuyListing:FireServer(listing.listingId)
-        end
-    end,false)
-end
-
-local function rebuildEquippedVisual()
-    if equippedModel then
-        equippedModel:Destroy()
-        equippedModel=nil
-        equippedItem=nil
+    local x=1
+    for i=#actions,1,-1 do
+        local a=actions[i]
+        local b=Instance.new("TextButton")
+        b.AnchorPoint=Vector2.new(1,.5)
+        b.Position=UDim2.new(x,-10,.5,0)
+        b.Size=UDim2.fromOffset(a.w or 78,42)
+        b.BackgroundColor3=a.disabled and Color3.fromRGB(66,66,72) or (a.color or Color3.fromRGB(87,61,160))
+        b.Text=a.text
+        b.TextColor3=Color3.new(1,1,1)
+        b.Font=Enum.Font.GothamBold
+        b.TextSize=14
+        b.ZIndex=13
+        b.AutoButtonColor=not a.disabled
+        b.Parent=f
+        corner(b,8)
+        if not a.disabled then b.MouseButton1Click:Connect(a.cb) end
+        x=x-((a.w or 78)+8)/math.max(f.AbsoluteSize.X,500)
     end
+end
 
+local function rebuildEquipped()
+    if equippedModel then equippedModel:Destroy() equippedModel=nil end
     if not state.equippedUid then return end
-
     for _,item in ipairs(state.inventory) do
         if item.uid==state.equippedUid then
-            equippedItem=item
             equippedModel=RelicModelBuilder.build(item)
             equippedModel.Name="LocalEquippedRelic"
             equippedModel.Parent=workspace
@@ -315,25 +342,35 @@ local function rebuildEquippedVisual()
 end
 
 local function refresh()
-    top.Text=string.format(
-        "Coins %s | Luck %d | Pity %d | %d/%d | %s",
-        fmt(state.coins),state.luckLevel,state.pity,#state.inventory,state.inventoryCap,state.biome.name or "Normal"
-    )
-
+    stats.Text=string.format("💰 %s   Luck %d   Pity %d   %d/%d   %s",fmt(state.coins),state.luckLevel,state.pity,#state.inventory,state.inventoryCap,state.biome.name or "Normal")
     autoBtn.Text=state.autoRoll and "AUTO ON" or "AUTO"
     quickBtn.Text=state.quickRoll and "QUICK ON" or "QUICK"
 
-    clear(left)
+    clear(invScroll)
     for _,item in ipairs(state.inventory) do
-        inventoryRow(left,item)
+        local equipped=state.equippedUid==item.uid
+        row(invScroll,string.format("%s [%s] #%04d\n1/%s • MV %s",item.relicName,item.mutationName,item.serial,fmt(item.combinedOneIn),fmt(item.marketValue or item.baseValue)),{
+            {text=equipped and "ON" or "EQUIP",w=72,disabled=false,cb=function() EquipItem:FireServer(item.uid) end},
+            {text=item.listed and "LISTED" or "SELL",w=72,disabled=item.listed==true,cb=function()
+                listingItem=item
+                priceTitle.Text=string.format("ANUNCIAR %s #%04d",item.relicName,item.serial)
+                priceBox.Text=tostring(math.max(1,math.floor(item.marketValue or item.baseValue or 1)))
+                priceModal.Visible=true
+            end}
+        })
     end
 
-    clear(right)
+    clear(marketScroll)
     for _,listing in ipairs(state.market) do
-        marketRow(right,listing)
+        local own=listing.sellerUserId==player.UserId
+        row(marketScroll,string.format("%s [%s] #%04d\n%s Coins • %s",listing.item.relicName,listing.item.mutationName,listing.item.serial,fmt(listing.price),listing.sellerName),{
+            {text=own and "CANCEL" or "BUY",w=88,color=own and Color3.fromRGB(145,64,70) or Color3.fromRGB(65,145,90),cb=function()
+                if own then CancelListing:FireServer(listing.listingId) else BuyListing:FireServer(listing.listingId) end
+            end}
+        })
     end
 
-    rebuildEquippedVisual()
+    rebuildEquipped()
 end
 
 confirmList.MouseButton1Click:Connect(function()
@@ -383,12 +420,10 @@ end)
 
 RollResult.OnClientEvent:Connect(function(item)
     reveal.Visible=true
-    reveal.Size=UDim2.fromOffset(220,120)
-    revealText.Text=string.format("%s\n[%s]\n#%04d\n1/%s",item.relicName,item.mutationName,item.serial,fmt(item.combinedOneIn))
-    TweenService:Create(reveal,TweenInfo.new(0.35,Enum.EasingStyle.Back),{Size=UDim2.fromOffset(460,240)}):Play()
-    task.delay(state.quickRoll and 0.35 or 1.25,function()
-        reveal.Visible=false
-    end)
+    reveal.Size=UDim2.fromOffset(220,110)
+    revealText.Text=string.format("%s\n[%s] #%04d\n1/%s",item.relicName,item.mutationName,item.serial,fmt(item.combinedOneIn))
+    TweenService:Create(reveal,TweenInfo.new(.3,Enum.EasingStyle.Back),{Size=UDim2.fromOffset(380,190)}):Play()
+    task.delay(state.quickRoll and .35 or 1.15,function() reveal.Visible=false end)
 end)
 
 RunService.RenderStepped:Connect(function()
@@ -397,13 +432,13 @@ RunService.RenderStepped:Connect(function()
     local root=character and character:FindFirstChild("HumanoidRootPart")
     if not root then return end
     local spin=os.clock()*1.4
-    local hover=math.sin(os.clock()*2.2)*0.35
-    equippedModel:PivotTo(root.CFrame*CFrame.new(3.5,2.2+hover,0)*CFrame.Angles(0,spin,0))
+    local hover=math.sin(os.clock()*2.2)*.3
+    equippedModel:PivotTo(root.CFrame*CFrame.new(3.2,2.1+hover,0)*CFrame.Angles(0,spin,0))
 end)
 
 player.CharacterAdded:Connect(function()
     task.wait(1)
-    rebuildEquippedVisual()
+    rebuildEquipped()
 end)
 
 refresh()
