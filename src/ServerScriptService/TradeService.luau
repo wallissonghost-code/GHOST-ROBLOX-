@@ -25,6 +25,11 @@ function TradeService.createOffer(fromPlayer, targetUserId, myUid, wantedUid)
 
     local fromProfile = deps.data.get(fromPlayer)
     local targetProfile = deps.data.get(target)
+
+    if wantedUid == "__equipped__" then
+        wantedUid = targetProfile and targetProfile.equippedUid or nil
+    end
+
     local myItem = validItem(fromProfile, myUid)
     local wantedItem = validItem(targetProfile, wantedUid)
     if not myItem or not wantedItem then return false, "invalid item" end
