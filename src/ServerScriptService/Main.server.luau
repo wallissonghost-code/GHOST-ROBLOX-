@@ -31,6 +31,7 @@ local ToggleQuick=re("ToggleQuick")
 local Sync=re("Sync")
 local Notify=re("Notify")
 local ListItem=re("ListItem")
+local CancelListing=re("CancelListing")
 local BuyListing=re("BuyListing")
 local UpgradeLuck=re("UpgradeLuck")
 local MarketChanged=re("MarketChanged")
@@ -159,10 +160,22 @@ end)
 ListItem.OnServerEvent:Connect(function(player,uid,price)
     local ok,err=MarketService.listItem(player,uid,price)
     if ok then
+        Notify:FireClient(player,"Item anunciado no mercado.")
         sync(player)
         refreshMarket()
     else
         Notify:FireClient(player,"Falha: "..tostring(err))
+    end
+end)
+
+CancelListing.OnServerEvent:Connect(function(player,id)
+    local ok,err=MarketService.cancel(player,id)
+    if ok then
+        Notify:FireClient(player,"Anúncio cancelado.")
+        sync(player)
+        refreshMarket()
+    else
+        Notify:FireClient(player,"Falha ao cancelar: "..tostring(err))
     end
 end)
 
