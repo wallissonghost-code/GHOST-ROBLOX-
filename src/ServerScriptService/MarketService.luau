@@ -48,6 +48,25 @@ function MarketService.listItem(player,uid,price)
         item=Util.deepCopy(item),
     }
     deps.data.saveMarket(market)
+    return true,id
+end
+
+function MarketService.cancel(player,listingId)
+    local listing=market[listingId]
+    if not listing then return false,"missing" end
+    if listing.sellerUserId~=player.UserId then return false,"not seller" end
+
+    local profile=deps.data.get(player)
+    if not profile then return false,"profile missing" end
+
+    local item=profile.inventory[listing.item.uid]
+    if item then
+        item.listed=false
+        item.listingId=nil
+    end
+
+    market[listingId]=nil
+    deps.data.saveMarket(market)
     return true
 end
 
