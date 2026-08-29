@@ -6,13 +6,15 @@ local Config = require(Shared.Config)
 local Util = require(Shared.Util)
 
 local DataService = {}
-local PLAYER_STORE = "RelicMarketRNG_V3_Player"
-local GLOBAL_STORE = "RelicMarketRNG_V3_Global"
+local PLAYER_STORE = "RelicMarketRNG_V5_Player"
+local GLOBAL_STORE = "RelicMarketRNG_V5_Global"
+local WEALTH_STORE = "RelicMarketRNG_V5_Wealth"
 
 local profiles = {}
 local useMock = true
 local mockPlayers = {}
 local mockGlobal = { market = {}, serials = {}, sales = {} }
+local mockWealth = {}
 
 local TEMPLATE = {
     coins = Config.START_COINS,
@@ -23,16 +25,40 @@ local TEMPLATE = {
     inventory = {},
     index = {},
     equippedUid = nil,
-    stats = { rolls=0, bestOneIn=1, totalSales=0, totalPurchases=0 },
+    daily = { lastClaim=0, streak=0 },
+    questProgress = {},
+    claimedQuests = {},
+    unlockedZones = { starter=true },
+    settings = { hideCommonReveal=false, music=true, effects=true },
+    stats = {
+        rolls=0,
+        bestOneIn=1,
+        totalSales=0,
+        totalPurchases=0,
+        trades=0,
+        recycled=0,
+        rareFinds=0,
+    },
 }
 
 local function key(player) return "p_" .. player.UserId end
+
+local function mergeDefaults(target, defaults)
+    for k,v in pairs(defaults) do
+        if target[k] == nil then
+            target[k] = Util.deepCopy(v)
+        elseif type(v) == "table" and type(target[k]) == "table" then
+            mergeDefaults(target[k], v)
+        end
+    end
+end
 
 function DataService.init()
     local ok = pcall(function()
         DataStoreService:GetDataStore(PLAYER_STORE):GetAsync("__probe__")
     end)
     useMock = not ok
+    if useMock then warn("[Relic Market RNG] DataStores unavailable; using memory mock.") end
 end
 
 function DataService.loadPlayer(player)
@@ -46,10 +72,8 @@ function DataService.loadPlayer(player)
         if ok then raw = res end
     end
 
-    local p = Util.deepCopy(TEMPLATE)
-    if type(raw)=="table" then
-        for k,v in pairs(raw) do p[k]=v end
-    end
+    local p = type(raw)=="table" and raw or Util.deepCopy(TEMPLATE)
+    mergeDefaults(p, TEMPLATE)
     profiles[player]=p
     return p
 end
@@ -59,13 +83,21 @@ function DataService.get(player) return profiles[player] end
 function DataService.savePlayer(player)
     local p = profiles[player]
     if not p then return false end
+
     if useMock then
         mockPlayers[key(player)] = Util.deepCopy(p)
+        mockWealth[player.UserId] = p.coins or 0
         return true
     end
+
     local ok = pcall(function()
         DataStoreService:GetDataStore(PLAYER_STORE):SetAsync(key(player), p)
     end)
+
+    pcall(function()
+        DataStoreService:GetOrderedDataStore(WEALTH_STORE):SetAsync(tostring(player.UserId), math.max(0, math.floor(p.coins or 0)))
+    end)
+
     return ok
 end
 
@@ -79,6 +111,7 @@ function DataService.nextSerial(relicId)
         mockGlobal.serials[relicId]=(mockGlobal.serials[relicId] or 0)+1
         return mockGlobal.serials[relicId]
     end
+
     local result
     local ok=pcall(function()
         result=DataStoreService:GetDataStore(GLOBAL_STORE):UpdateAsync("serial_"..relicId,function(cur)
@@ -140,6 +173,30 @@ function DataService.marketValue(relicId, fallback)
     local total=0
     for _,v in ipairs(sales) do total+=v end
     return math.floor(total/#sales)
+end
+
+function DataService.getTopWealth(limit)
+    limit = math.clamp(limit or 10, 1, 25)
+    local out = {}
+
+    if useMock then
+        for userId,coins in pairs(mockWealth) do
+            table.insert(out,{userId=userId,coins=coins})
+        end
+        table.sort(out,function(a,b) return a.coins>b.coins end)
+        while #out>limit do table.remove(out) end
+        return out
+    end
+
+    local ok,pages = pcall(function()
+        return DataStoreService:GetOrderedDataStore(WEALTH_STORE):GetSortedAsync(false,limit)
+    end)
+    if not ok then return out end
+
+    for _,entry in ipairs(pages:GetCurrentPage()) do
+        table.insert(out,{userId=tonumber(entry.key) or 0,coins=entry.value or 0})
+    end
+    return out
 end
 
 function DataService.autosave()
