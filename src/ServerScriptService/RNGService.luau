@@ -23,16 +23,12 @@ function RNGService.roll(profile,biome,serialProvider,mvProvider)
     local mult=luck(profile)*pity(profile)*biome.luckMult
     local relic=Config.RELICS[1]
     for _,r in ipairs(Config.RELICS) do
-        if WeightedRNG.oneIn(r.oneIn,mult) and r.oneIn>=relic.oneIn then
-            relic=r
-        end
+        if WeightedRNG.oneIn(r.oneIn,mult) and r.oneIn>=relic.oneIn then relic=r end
     end
 
     local mutation=Config.MUTATIONS[1]
     for _,m in ipairs(Config.MUTATIONS) do
-        if WeightedRNG.oneIn(m.oneIn,biome.mutationMult) and m.oneIn>=mutation.oneIn then
-            mutation=m
-        end
+        if WeightedRNG.oneIn(m.oneIn,biome.mutationMult) and m.oneIn>=mutation.oneIn then mutation=m end
     end
 
     local item={
@@ -45,6 +41,7 @@ function RNGService.roll(profile,biome,serialProvider,mvProvider)
         mutationId=mutation.id,
         mutationName=mutation.name,
         mutationOneIn=mutation.oneIn,
+        mutationValueMult=mutation.valueMult or 1,
         combinedOneIn=relic.oneIn*math.max(1,mutation.oneIn),
         baseValue=relic.baseValue,
         marketValue=mvProvider(relic.id,relic.baseValue),
