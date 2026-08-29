@@ -25,6 +25,8 @@ local TEMPLATE = {
     inventory = {},
     index = {},
     equippedUid = nil,
+    museumSlots = {},
+    museumVisits = 0,
     daily = { lastClaim=0, streak=0 },
     questProgress = {},
     claimedQuests = {},
