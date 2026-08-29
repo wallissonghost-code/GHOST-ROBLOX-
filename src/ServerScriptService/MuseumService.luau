@@ -15,14 +15,9 @@ local MAX_PLOTS = 8
 local SLOTS_PER_PLOT = 12
 
 local PLOT_POSITIONS = {
-    Vector3.new(-110, 0, 105),
-    Vector3.new(0, 0, 118),
-    Vector3.new(110, 0, 105),
-    Vector3.new(-118, 0, 0),
-    Vector3.new(118, 0, 0),
-    Vector3.new(-110, 0, -105),
-    Vector3.new(0, 0, -125),
-    Vector3.new(110, 0, -105),
+    Vector3.new(-110, 0, 105), Vector3.new(0, 0, 118), Vector3.new(110, 0, 105),
+    Vector3.new(-118, 0, 0), Vector3.new(118, 0, 0),
+    Vector3.new(-110, 0, -105), Vector3.new(0, 0, -125), Vector3.new(110, 0, -105),
 }
 
 local function makePart(parent, name, size, cframe, color, material)
@@ -45,7 +40,6 @@ local function addBillboard(adornee, text, offset, size)
     gui.StudsOffset = offset or Vector3.new(0, 5, 0)
     gui.AlwaysOnTop = true
     gui.Parent = adornee
-
     local label = Instance.new("TextLabel")
     label.Size = UDim2.fromScale(1, 1)
     label.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
@@ -63,8 +57,12 @@ local function sanitize(container)
     for _, obj in ipairs(container:GetDescendants()) do
         if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
             obj:Destroy()
-        elseif obj:IsA("Tool") or obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+        elseif obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
             obj:Destroy()
+        elseif obj:IsA("Tool") then
+            obj.Enabled = false
+            obj.CanBeDropped = false
+            obj.RequiresHandle = false
         elseif obj:IsA("BasePart") then
             obj.Anchored = true
             obj.CanCollide = false
@@ -76,32 +74,24 @@ end
 
 local function firstBasePart(model)
     if model:IsA("BasePart") then return model end
-    for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("BasePart") then return d end
-    end
+    for _, d in ipairs(model:GetDescendants()) do if d:IsA("BasePart") then return d end end
 end
 
 local function applyMutationVisual(model, item)
     local part = firstBasePart(model)
     if not part then return end
-
     local highlight = Instance.new("Highlight")
     highlight.Name = "MutationHighlight"
     highlight.FillTransparency = 0.72
     highlight.OutlineTransparency = 0.12
     highlight.Adornee = model
     highlight.Parent = model
-
     local colors = {
-        Normal = Color3.fromRGB(230,230,230),
-        Shiny = Color3.fromRGB(255,235,110),
-        Corrupted = Color3.fromRGB(150,35,45),
-        Glitched = Color3.fromRGB(190,60,255),
-        Celestial = Color3.fromRGB(150,220,255),
-        Singularity = Color3.fromRGB(45,20,80),
+        Normal=Color3.fromRGB(230,230,230), Shiny=Color3.fromRGB(255,235,110),
+        Corrupted=Color3.fromRGB(150,35,45), Glitched=Color3.fromRGB(190,60,255),
+        Celestial=Color3.fromRGB(150,220,255), Singularity=Color3.fromRGB(45,20,80),
     }
     highlight.OutlineColor = colors[item.mutationName] or Color3.new(1,1,1)
-
     if item.mutationName ~= "Normal" then
         local light = Instance.new("PointLight")
         light.Color = highlight.OutlineColor
@@ -117,22 +107,16 @@ local function normalizeModel(model, targetCFrame, desiredMaxSize)
         model.Parent = wrap
         model = wrap
     end
-
     sanitize(model)
-
-    local ok, size = pcall(function()
-        local _, s = model:GetBoundingBox()
-        return s
+    if not firstBasePart(model) then return nil end
+    local ok, _, size = pcall(function()
+        local cf, s = model:GetBoundingBox()
+        return cf, s
     end)
-
     if ok and size then
         local largest = math.max(size.X, size.Y, size.Z)
-        if largest > 0 then
-            local factor = desiredMaxSize / largest
-            pcall(function() model:ScaleTo(factor) end)
-        end
+        if largest > 0 then pcall(function() model:ScaleTo(desiredMaxSize / largest) end) end
     end
-
     pcall(function() model:PivotTo(targetCFrame) end)
     return model
 end
@@ -140,17 +124,17 @@ end
 local function buildVisual(item, targetCFrame)
     local entry = AssetCatalog.get(item.relicId)
     if entry and entry.assetId and entry.assetId > 0 then
-        local ok, inserted = pcall(function()
-            return InsertService:LoadAsset(entry.assetId)
-        end)
+        local ok, inserted = pcall(function() return InsertService:LoadAsset(entry.assetId) end)
         if ok and inserted then
             local visual = normalizeModel(inserted, targetCFrame, 5.2 * (entry.scale or 1))
-            visual.Name = "CreatorStore_" .. item.relicId
-            applyMutationVisual(visual, item)
-            return visual
+            if visual then
+                visual.Name = "CreatorStore_" .. item.relicId
+                applyMutationVisual(visual, item)
+                return visual
+            end
+            inserted:Destroy()
         end
     end
-
     local fallback = RelicModelBuilder.build(item)
     fallback.Name = "Fallback_" .. item.relicId
     fallback:PivotTo(targetCFrame)
@@ -169,14 +153,11 @@ local function displayItemOnPedestal(plot, slotIndex, item)
     local pedestal = plot.pedestals[slotIndex]
     if not pedestal then return end
     clearPedestalVisual(pedestal)
-
     local holder = Instance.new("Model")
     holder.Name = "Display_" .. pedestal.Name
     holder.Parent = plot.model
-
     local visual = buildVisual(item, pedestal.CFrame * CFrame.new(0, 4.2, 0))
     visual.Parent = holder
-
     local gui = Instance.new("BillboardGui")
     gui.Name = "ItemLabel"
     gui.Adornee = pedestal
@@ -184,7 +165,6 @@ local function displayItemOnPedestal(plot, slotIndex, item)
     gui.StudsOffset = Vector3.new(0, 7.6, 0)
     gui.AlwaysOnTop = true
     gui.Parent = pedestal
-
     local label = Instance.new("TextLabel")
     label.Size = UDim2.fromScale(1,1)
     label.BackgroundColor3 = Color3.fromRGB(12,12,18)
@@ -200,9 +180,7 @@ end
 local function displayedSet(profile)
     local set = {}
     profile.museumSlots = profile.museumSlots or {}
-    for _, uid in pairs(profile.museumSlots) do
-        if uid then set[uid] = true end
-    end
+    for _, uid in pairs(profile.museumSlots) do if uid then set[uid] = true end end
     return set
 end
 
@@ -211,9 +189,7 @@ local function bestUndisplayed(profile)
     local best
     for uid, item in pairs(profile.inventory or {}) do
         if not item.listed and not used[uid] then
-            if not best or (item.combinedOneIn or 1) > (best.combinedOneIn or 1) then
-                best = item
-            end
+            if not best or (item.combinedOneIn or 1) > (best.combinedOneIn or 1) then best = item end
         end
     end
     return best
@@ -224,18 +200,13 @@ local function refreshSlot(player, slotIndex)
     local plot = plotIndex and plots[plotIndex]
     local profile = deps.data.get(player)
     if not plot or not profile then return end
-
     profile.museumSlots = profile.museumSlots or {}
     local uid = profile.museumSlots[tostring(slotIndex)]
     local pedestal = plot.pedestals[slotIndex]
     clearPedestalVisual(pedestal)
-
     local item = uid and profile.inventory[uid]
-    if item then
-        displayItemOnPedestal(plot, slotIndex, item)
-    elseif uid then
-        profile.museumSlots[tostring(slotIndex)] = nil
-    end
+    if item then displayItemOnPedestal(plot, slotIndex, item)
+    elseif uid then profile.museumSlots[tostring(slotIndex)] = nil end
 end
 
 local function updateOwnerSign(plot, player)
@@ -246,14 +217,11 @@ local function buildPlot(index, position)
     local model = Instance.new("Model")
     model.Name = "MuseumPlot" .. index
     model.Parent = rootFolder
-
     local floor = makePart(model, "Floor", Vector3.new(70,1,58), CFrame.new(position + Vector3.new(0,0.5,0)), Color3.fromRGB(54,55,62), Enum.Material.Marble)
     local back = makePart(model, "BackWall", Vector3.new(70,18,2), CFrame.new(position + Vector3.new(0,9,-28)), Color3.fromRGB(31,32,40), Enum.Material.Slate)
     local ownerLabel = addBillboard(back, "MUSEU DISPONÍVEL", Vector3.new(0,7,0), UDim2.fromOffset(360,80))
-
     local accent = makePart(model, "Accent", Vector3.new(28,1.2,8), CFrame.new(position + Vector3.new(0,1,23)), Color3.fromRGB(91,62,170), Enum.Material.Neon)
     addBillboard(accent, "EXPOSIÇÃO DE RELÍQUIAS", Vector3.new(0,3,0), UDim2.fromOffset(260,55))
-
     local pedestals = {}
     local slot = 0
     for row=1,3 do
@@ -264,7 +232,6 @@ local function buildPlot(index, position)
             local pedestal = makePart(model, "Pedestal"..slot, Vector3.new(7,2.4,7), CFrame.new(position + Vector3.new(x,1.7,z)), Color3.fromRGB(80,82,94), Enum.Material.Marble)
             pedestal:SetAttribute("MuseumSlot", slot)
             pedestals[slot] = pedestal
-
             local prompt = Instance.new("ProximityPrompt")
             prompt.Name = "MuseumPrompt"
             prompt.ActionText = "EXIBIR / REMOVER"
@@ -272,11 +239,8 @@ local function buildPlot(index, position)
             prompt.HoldDuration = 0.35
             prompt.MaxActivationDistance = 10
             prompt.Parent = pedestal
-
             prompt.Triggered:Connect(function(player)
-                if playerPlot[player] ~= index then
-                    return
-                end
+                if playerPlot[player] ~= index then return end
                 local profile = deps.data.get(player)
                 if not profile then return end
                 profile.museumSlots = profile.museumSlots or {}
@@ -296,19 +260,10 @@ local function buildPlot(index, position)
                     if deps.notify then deps.notify(player, item.relicName .. " foi colocado no museu.") end
                 end
                 deps.data.savePlayer(player)
-                if deps.sync then deps.sync(player) end
             end)
         end
     end
-
-    return {
-        model = model,
-        floor = floor,
-        ownerLabel = ownerLabel,
-        pedestals = pedestals,
-        owner = nil,
-        position = position,
-    }
+    return {model=model, floor=floor, ownerLabel=ownerLabel, pedestals=pedestals, owner=nil, position=position}
 end
 
 function MuseumService.init(d, worldFolder)
@@ -316,10 +271,7 @@ function MuseumService.init(d, worldFolder)
     rootFolder = Instance.new("Folder")
     rootFolder.Name = "PlayerMuseums"
     rootFolder.Parent = worldFolder or workspace
-
-    for i=1,MAX_PLOTS do
-        plots[i] = buildPlot(i, PLOT_POSITIONS[i])
-    end
+    for i=1,MAX_PLOTS do plots[i] = buildPlot(i, PLOT_POSITIONS[i]) end
 end
 
 function MuseumService.assign(player)
@@ -329,7 +281,6 @@ function MuseumService.assign(player)
             plots[i].owner = player
             playerPlot[player] = i
             updateOwnerSign(plots[i], player)
-
             local profile = deps.data.get(player)
             if profile then
                 profile.museumSlots = profile.museumSlots or {}
@@ -338,7 +289,6 @@ function MuseumService.assign(player)
             return i
         end
     end
-    return nil
 end
 
 function MuseumService.release(player)
@@ -346,18 +296,14 @@ function MuseumService.release(player)
     if not idx then return end
     local plot = plots[idx]
     if plot then
-        for slot=1,SLOTS_PER_PLOT do
-            clearPedestalVisual(plot.pedestals[slot])
-        end
+        for slot=1,SLOTS_PER_PLOT do clearPedestalVisual(plot.pedestals[slot]) end
         plot.owner = nil
         updateOwnerSign(plot, nil)
     end
     playerPlot[player] = nil
 end
 
-function MuseumService.getPlotIndex(player)
-    return playerPlot[player]
-end
+function MuseumService.getPlotIndex(player) return playerPlot[player] end
 
 function MuseumService.getMuseumScore(player)
     local profile = deps.data.get(player)
