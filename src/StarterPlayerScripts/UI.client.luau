@@ -14,6 +14,7 @@ local ToggleQuick=remotes.ToggleQuick
 local Sync=remotes.Sync
 local Notify=remotes.Notify
 local ListItem=remotes.ListItem
+local CancelListing=remotes.CancelListing
 local BuyListing=remotes.BuyListing
 local UpgradeLuck=remotes.UpgradeLuck
 local MarketChanged=remotes.MarketChanged
@@ -283,8 +284,13 @@ local function marketRow(parent,listing)
     l.Text=string.format("%s [%s] #%04d\n%s Coins • %s",listing.item.relicName,listing.item.mutationName,listing.item.serial,fmt(listing.price),listing.sellerName)
     l.Parent=f
 
-    actionButton(f,"BUY",1,0.27,function()
-        BuyListing:FireServer(listing.listingId)
+    local ownListing=listing.sellerUserId==player.UserId
+    actionButton(f,ownListing and "CANCEL" or "BUY",1,0.27,function()
+        if ownListing then
+            CancelListing:FireServer(listing.listingId)
+        else
+            BuyListing:FireServer(listing.listingId)
+        end
     end,false)
 end
 
