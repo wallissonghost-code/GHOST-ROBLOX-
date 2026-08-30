@@ -9,7 +9,9 @@
       "WorldBuilder": {"$path": "src/server/WorldBuilder.server.luau"},
       "GameService": {"$path": "src/server/GameService.server.luau"},
       "CombatService": {"$path": "src/server/CombatService.server.luau"},
-      "AutoBaseService": {"$path": "src/server/AutoBaseService.server.luau"}
+      "AutoBaseService": {"$path": "src/server/AutoBaseService.server.luau"},
+      "PremiumAssetCatalog": {"$path": "src/server/PremiumAssetCatalog.luau"},
+      "TycoonBuildService": {"$path": "src/server/TycoonBuildService.server.luau"}
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
