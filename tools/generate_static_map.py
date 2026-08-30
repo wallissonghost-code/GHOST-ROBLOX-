@@ -25,9 +25,17 @@ def region_for(x, z):
 
 def part(size, pos, material="Concrete", color=(0.5, 0.5, 0.5), collide=True, transparency=0):
     return {"$className": "Part", "$properties": {
-        "Anchored": True, "CanCollide": collide, "CanTouch": collide, "CanQuery": True,
-        "Size": list(size), "Position": list(pos), "Material": material, "Color": list(color),
-        "Transparency": transparency, "TopSurface": "Smooth", "BottomSurface": "Smooth"
+        "Anchored": True,
+        "CanCollide": collide,
+        "CanTouch": collide,
+        "CanQuery": True,
+        "Size": list(size),
+        "Position": list(pos),
+        "Material": material,
+        "Color": list(color),
+        "Transparency": transparency,
+        "TopSurface": "Smooth",
+        "BottomSurface": "Smooth"
     }}
 
 
@@ -45,22 +53,27 @@ for i, z in enumerate(range(-HALF + TILE // 2, HALF, TILE)):
 for i, x in enumerate(range(-HALF + TILE // 2, HALF, TILE)):
     workspace[f"HIGHWAY_EW_{i}"] = part((TILE, 3, 140), (x, 1.5, 0), "Concrete", (0.06, 0.065, 0.07))
 
-# Capital district: unmistakable city center near spawn.
-for n, x in enumerate(range(-1600, 1601, 400)):
-    workspace[f"CAP_ROAD_X_{n}"] = part((90, 3, 3600), (x, 1.6, 0), "Concrete", (0.055, 0.06, 0.065))
-for n, z in enumerate(range(-1600, 1601, 400)):
-    workspace[f"CAP_ROAD_Z_{n}"] = part((3600, 3, 90), (0, 1.7, z), "Concrete", (0.055, 0.06, 0.065))
+# Guaranteed clean spawn district. Nothing tall is allowed inside this square.
+workspace["SAFE_SPAWN_PLATFORM"] = part((900, 12, 900), (0, 6, 0), "Concrete", (0.48, 0.50, 0.52))
+workspace["SAFE_SPAWN_RING_N"] = part((900, 4, 70), (0, 14, -415), "Neon", (0.08, 0.55, 0.95), False)
+workspace["SAFE_SPAWN_RING_S"] = part((900, 4, 70), (0, 14, 415), "Neon", (0.08, 0.55, 0.95), False)
+workspace["SAFE_SPAWN_RING_W"] = part((70, 4, 760), (-415, 14, 0), "Neon", (0.08, 0.55, 0.95), False)
+workspace["SAFE_SPAWN_RING_E"] = part((70, 4, 760), (415, 14, 0), "Neon", (0.08, 0.55, 0.95), False)
 
+# Capital streets start outside the safe spawn zone.
+for n, x in enumerate((-1800, -1400, -1000, 1000, 1400, 1800)):
+    workspace[f"CAP_ROAD_X_{n}"] = part((90, 3, 3900), (x, 1.6, 0), "Concrete", (0.055, 0.06, 0.065))
+for n, z in enumerate((-1800, -1400, -1000, 1000, 1400, 1800)):
+    workspace[f"CAP_ROAD_Z_{n}"] = part((3900, 3, 90), (0, 1.7, z), "Concrete", (0.055, 0.06, 0.065))
+
+# City blocks intentionally kept far from the spawn so the camera never clips into them.
 idx = 0
-for x in (-1400, -1000, -600, 600, 1000, 1400):
-    for z in (-1400, -1000, -600, 600, 1000, 1400):
+for x in (-1800, -1400, -1000, 1000, 1400, 1800):
+    for z in (-1800, -1400, -1000, 1000, 1400, 1800):
         idx += 1
-        h = 130 + (idx % 6) * 45
-        workspace[f"CAP_BUILDING_{idx}"] = part((250, h, 250), (x, h / 2, z), "Concrete", (0.40, 0.43, 0.46))
-        workspace[f"CAP_ROOF_{idx}"] = part((270, 8, 270), (x, h + 4, z), "Metal", (0.12, 0.14, 0.16))
-
-workspace["CAPITAL_PLAZA"] = part((700, 4, 700), (0, 2, 0), "Marble", (0.65, 0.67, 0.68))
-workspace["CAPITAL_TOWER"] = part((120, 420, 120), (0, 210, 0), "Metal", (0.18, 0.40, 0.55))
+        h = 120 + (idx % 5) * 35
+        workspace[f"CAP_BUILDING_{idx}"] = part((220, h, 220), (x, h / 2, z), "Concrete", (0.40, 0.43, 0.46))
+        workspace[f"CAP_ROOF_{idx}"] = part((235, 8, 235), (x, h + 4, z), "Metal", (0.12, 0.14, 0.16))
 
 # Airport.
 workspace["AIRPORT_RUNWAY"] = part((340, 4, 3000), (0, 2, -5600), "Concrete", (0.04, 0.045, 0.05))
@@ -111,11 +124,15 @@ for z in (4700, 5500, 6300):
         workspace[f"BASE_PLOT_{plot}"] = part((820, 6, 620), (x, 3, z), "Concrete", (0.26, 0.29, 0.27))
         workspace[f"BASE_PAD_{plot}"] = part((90, 5, 90), (x, 7, z), "Neon", (0.10, 0.80, 0.32), False)
 
-# Spawn is baked into the city center. No script may move the player elsewhere.
+# Spawn sits above the clean central platform with no nearby tall geometry.
 workspace["STATIC_SPAWN"] = {"$className": "SpawnLocation", "$properties": {
-    "Anchored": True, "Neutral": True, "CanCollide": True,
-    "Size": [40, 2, 40], "Position": [220, 6, 220],
-    "Material": "Neon", "Color": [0.1, 0.85, 0.3]
+    "Anchored": True,
+    "Neutral": True,
+    "CanCollide": True,
+    "Size": [42, 2, 42],
+    "Position": [0, 14, 0],
+    "Material": "Neon",
+    "Color": [0.1, 0.85, 0.3]
 }}
 
 project = {
