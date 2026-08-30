@@ -14,17 +14,22 @@ return {
     WANTED_MAX = 5,
     WANTED_DECAY_SECONDS = 40,
 
+    WORLD_SIZE = 2400,
     VEHICLES = {
-        Jeep = {cost = 0, maxSpeed = 75, color = Color3.fromRGB(55, 76, 52)},
-        Pursuit = {cost = 7000, maxSpeed = 105, color = Color3.fromRGB(32, 34, 38)},
-        Armored = {cost = 25000, maxSpeed = 62, color = Color3.fromRGB(65, 72, 61)},
-        Helicopter = {cost = 50000, maxSpeed = 85, color = Color3.fromRGB(62, 70, 67)},
+        Jeep = {cost = 0, maxSpeed = 92, color = Color3.fromRGB(55, 76, 52)},
+        Pursuit = {cost = 7000, maxSpeed = 128, color = Color3.fromRGB(32, 34, 38)},
+        Armored = {cost = 25000, maxSpeed = 76, color = Color3.fromRGB(65, 72, 61)},
+        Helicopter = {cost = 50000, maxSpeed = 110, color = Color3.fromRGB(62, 70, 67)},
     },
 
     BASE_POSITIONS = {
-        Vector3.new(-175, 0, -125),
-        Vector3.new(175, 0, -125),
-        Vector3.new(-175, 0, 125),
-        Vector3.new(175, 0, 125),
+        Vector3.new(-900, 0, -760),
+        Vector3.new(-300, 0, -960),
+        Vector3.new(300, 0, -960),
+        Vector3.new(900, 0, -760),
+        Vector3.new(-940, 0, 520),
+        Vector3.new(-360, 0, 930),
+        Vector3.new(360, 0, 930),
+        Vector3.new(940, 0, 520),
     },
 }
