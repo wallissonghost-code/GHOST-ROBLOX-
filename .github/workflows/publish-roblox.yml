@@ -36,9 +36,15 @@ jobs:
 
       - name: Download single licensed map
         shell: bash
+        env:
+          ROBLOX_API_KEY: ${{ secrets.GHOST_ROBLOX }}
         run: |
           set -euo pipefail
-          "$HOME/go/bin/rbxmk" download-asset --id "$MAP_ASSET_ID" SingleMap.rbxm
+          HTTP_CODE=$(curl -sS -L -o SingleMap.rbxm -w "%{http_code}" \
+            "https://apis.roblox.com/asset-delivery-api/v1/assetId/${MAP_ASSET_ID}" \
+            --header "x-api-key: ${ROBLOX_API_KEY}")
+          echo "Asset delivery HTTP: $HTTP_CODE"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then exit 1; fi
           test -s SingleMap.rbxm
           echo "Downloaded map bytes: $(wc -c < SingleMap.rbxm)"
 
