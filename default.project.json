@@ -3,7 +3,8 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "MegaWorld": {"$path": "src/server/MegaWorld.server.luau"}
+      "MegaWorld": {"$path": "src/server/MegaWorld.server.luau"},
+      "RegionAssets": {"$path": "src/server/RegionAssets.server.luau"}
     }
   }
 }
