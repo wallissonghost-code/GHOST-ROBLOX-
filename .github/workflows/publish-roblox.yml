@@ -5,9 +5,7 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "src/**"
       - "tools/**"
-      - "default.project.json"
       - ".github/workflows/publish-roblox.yml"
 
 concurrency:
@@ -22,34 +20,33 @@ jobs:
     env:
       UNIVERSE_ID: "10708027069"
       PLACE_ID: "96625647109064"
-      ROJO_VERSION: "7.7.0"
       OUTPUT_FILE: "OpenWorldOps.rbxlx"
+      MAP_ASSET_ID: "71516737"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rojo
+      - name: Install rbxmk
         shell: bash
         run: |
           set -euo pipefail
-          curl -fL "https://github.com/rojo-rbx/rojo/releases/download/v${ROJO_VERSION}/rojo-${ROJO_VERSION}-linux-x86_64.zip" -o rojo.zip
-          unzip -q rojo.zip
-          chmod +x rojo
-          ./rojo --version
+          go install github.com/anaminus/rbxmk/rbxmk@v0.9.1
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          "$HOME/go/bin/rbxmk" --version || true
 
-      - name: Generate static mega world
+      - name: Download single licensed map
         shell: bash
         run: |
           set -euo pipefail
-          python3 tools/generate_static_map.py > generated.project.json
-          test -s generated.project.json
-          echo "Generated project bytes: $(wc -c < generated.project.json)"
+          "$HOME/go/bin/rbxmk" download-asset -id "$MAP_ASSET_ID" SingleMap.rbxm
+          test -s SingleMap.rbxm
+          echo "Downloaded map bytes: $(wc -c < SingleMap.rbxm)"
 
-      - name: Build Roblox place
+      - name: Build place from single map
         shell: bash
         run: |
           set -euo pipefail
-          ./rojo build generated.project.json --output "$OUTPUT_FILE"
+          "$HOME/go/bin/rbxmk" run tools/build_single_map.rbxmk.lua SingleMap.rbxm "$OUTPUT_FILE"
           test -s "$OUTPUT_FILE"
           echo "Built place bytes: $(wc -c < "$OUTPUT_FILE")"
 
@@ -72,6 +69,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: OpenWorldOps-place
+          name: SingleReadyMap-place
           path: OpenWorldOps.rbxlx
           if-no-files-found: ignore
