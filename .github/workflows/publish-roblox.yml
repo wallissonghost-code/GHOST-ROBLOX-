@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "src/**"
+      - "tools/**"
       - "default.project.json"
       - ".github/workflows/publish-roblox.yml"
 
@@ -26,6 +27,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Install Rojo
         shell: bash
         run: |
@@ -34,12 +36,23 @@ jobs:
           unzip -q rojo.zip
           chmod +x rojo
           ./rojo --version
+
+      - name: Generate static mega world
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/generate_static_map.py > generated.project.json
+          test -s generated.project.json
+          echo "Generated project bytes: $(wc -c < generated.project.json)"
+
       - name: Build Roblox place
         shell: bash
         run: |
           set -euo pipefail
-          ./rojo build default.project.json --output "$OUTPUT_FILE"
+          ./rojo build generated.project.json --output "$OUTPUT_FILE"
           test -s "$OUTPUT_FILE"
+          echo "Built place bytes: $(wc -c < "$OUTPUT_FILE")"
+
       - name: Publish to Roblox Open Cloud
         shell: bash
         env:
@@ -54,6 +67,7 @@ jobs:
           cat response.json
           if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then exit 1; fi
           grep -q 'versionNumber' response.json
+
       - name: Upload built place artifact
         if: always()
         uses: actions/upload-artifact@v4
