@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "src/**"
+      - "package.json"
       - "default.project.json"
       - ".github/workflows/publish-roblox.yml"
 
@@ -18,16 +19,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     env:
       UNIVERSE_ID: "10708027069"
       PLACE_ID: "96625647109064"
       ROJO_VERSION: "7.7.0"
-      OUTPUT_FILE: "RelicMarketRNGV3.rbxlx"
-
+      OUTPUT_FILE: "GhostRngBase.rbxlx"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Nevermore dependencies
+        run: npm install --no-audit --no-fund
 
       - name: Install Rojo
         shell: bash
@@ -52,39 +59,26 @@ jobs:
           ROBLOX_API_KEY: ${{ secrets.GHOST_ROBLOX }}
         run: |
           set -euo pipefail
-
           if [ -z "${ROBLOX_API_KEY:-}" ]; then
             echo "Secret GHOST_ROBLOX is missing or empty."
             exit 1
           fi
-
           HTTP_CODE=$(curl -sS -o response.json -w "%{http_code}" \
             --request POST \
             "https://apis.roblox.com/universes/v1/${UNIVERSE_ID}/places/${PLACE_ID}/versions?versionType=Published" \
             --header "x-api-key: ${ROBLOX_API_KEY}" \
             --header "Content-Type: application/xml" \
             --data-binary "@${OUTPUT_FILE}")
-
           echo "Roblox HTTP status: ${HTTP_CODE}"
           cat response.json
           echo
-
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            echo "Roblox publish failed."
-            exit 1
-          fi
-
-          if ! grep -q 'versionNumber' response.json; then
-            echo "Publish response did not include versionNumber."
-            exit 1
-          fi
-
-          echo "Roblox place published successfully."
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then exit 1; fi
+          grep -q 'versionNumber' response.json
 
       - name: Upload built place artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: RelicMarketRNGV3-place
-          path: RelicMarketRNGV3.rbxlx
+          name: GhostRngBase-place
+          path: GhostRngBase.rbxlx
           if-no-files-found: ignore

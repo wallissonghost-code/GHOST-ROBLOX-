@@ -1,35 +1,22 @@
-# Relic Market RNG V3
+# Ghost RNG Base
 
-Experience ID: 10708027069
-Place ID: 96625647109064
+Licensed Roblox RNG base derived from Color RNG by OttoHatt.
 
-## V3 adds a real physical game layer
-- Central RNG altar
-- Marketplace hall
-- Player showcase pedestals
-- 3D procedural relic models
-- Roll presentation animation
-- Biome lighting changes
-- Global rarity announcements
-- Auto Roll
-- Quick Roll
-- Pity
-- Luck upgrades
-- Inventory
-- Collection Index
-- Player marketplace
-- Market value tracking
-- Unique serial numbers
-- DataStore support
+Current baseline includes:
+- server-authoritative unboxing;
+- DataStore-backed collection inventory;
+- animated reveal UI;
+- rarity tiers;
+- responsive inventory UI;
+- Rojo/Nevermore project structure.
 
-## Core loop
-Walk to altar -> roll -> obtain physical relic -> keep/show/list -> sell to another player -> improve Luck -> chase rarer relics.
+## Development
 
-## Setup
-1. Install Rojo.
-2. Run `rojo serve`.
-3. Connect Studio.
-4. Press Play.
-5. Enable Studio Access to API Services for real persistence.
+```bash
+npm install
+rojo serve
+```
 
-Marketplace currency is internal Coins.
+## License
+
+AGPL-3.0-or-later. See `LICENSE.md` and `ORIGINAL_SOURCE.md`.

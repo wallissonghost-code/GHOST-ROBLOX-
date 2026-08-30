@@ -1,26 +1,19 @@
 {
-  "name": "RelicMarketRNGV3",
+  "name": "GhostRngBase",
+  "globIgnorePaths": ["**/.package-lock.json"],
   "tree": {
     "$className": "DataModel",
-    "ReplicatedStorage": {
-      "$className": "ReplicatedStorage",
-      "RelicShared": {
-        "$path": "src/ReplicatedStorage"
-      }
-    },
     "ServerScriptService": {
-      "$className": "ServerScriptService",
-      "RelicServer": {
-        "$path": "src/ServerScriptService"
-      }
+      "ColorRng": {
+        "$className": "Folder",
+        "game": { "$path": "src/modules" },
+        "node_modules": { "$path": "node_modules" }
+      },
+      "ColorRngScripts": { "$path": "src/scripts/Server" }
     },
     "StarterPlayer": {
-      "$className": "StarterPlayer",
       "StarterPlayerScripts": {
-        "$className": "StarterPlayerScripts",
-        "RelicClient": {
-          "$path": "src/StarterPlayerScripts"
-        }
+        "ColorRngScripts": { "$path": "src/scripts/Client" }
       }
     }
   }
