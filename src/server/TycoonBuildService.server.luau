@@ -11,17 +11,43 @@ local store = DataStoreService:GetDataStore("PremiumBaseTycoon_v1")
 local profiles = {}
 local activeByBase = {}
 
+local GROUND_Y = 0
+
 local NODES = {
-    {id="OfficerQuarters", name="ALOJAMENTO", cost=650, income=20, offset=Vector3.new(-36,1,-12), requires=nil},
-    {id="Barracks", name="QUARTEL", cost=1600, income=35, offset=Vector3.new(34,1,-14), requires="OfficerQuarters"},
-    {id="CommandHQ", name="CENTRO DE COMANDO", cost=4200, income=60, offset=Vector3.new(0,1,-24), requires="Barracks"},
-    {id="AdminBuilding", name="INTEL / ADMIN", cost=8500, income=95, offset=Vector3.new(-34,1,18), requires="CommandHQ"},
-    {id="Airbase", name="HANGAR", cost=18000, income=160, offset=Vector3.new(36,1,18), requires="AdminBuilding"},
-    {id="MilitaryCompound", name="COMPLEXO MILITAR", cost=42000, income=300, offset=Vector3.new(0,1,8), requires="Airbase"},
+    {id="OfficerQuarters", name="ALOJAMENTO", cost=650, income=20, offset=Vector3.new(-36,0,-12), requires=nil},
+    {id="Barracks", name="QUARTEL", cost=1600, income=35, offset=Vector3.new(34,0,-14), requires="OfficerQuarters"},
+    {id="CommandHQ", name="CENTRO DE COMANDO", cost=4200, income=60, offset=Vector3.new(0,0,-24), requires="Barracks"},
+    {id="AdminBuilding", name="INTEL / ADMIN", cost=8500, income=95, offset=Vector3.new(-34,0,18), requires="CommandHQ"},
+    {id="Airbase", name="HANGAR", cost=18000, income=160, offset=Vector3.new(36,0,18), requires="AdminBuilding"},
+    {id="MilitaryCompound", name="COMPLEXO MILITAR", cost=42000, income=300, offset=Vector3.new(0,0,8), requires="Airbase"},
 }
 
 local function defaultData()
     return {coins=0, bank=0, purchased={}}
+end
+
+local function baseGroundPosition(base)
+    local pivot = base:GetPivot().Position
+    return Vector3.new(pivot.X, GROUND_Y, pivot.Z)
+end
+
+local function groundModelAt(model, target)
+    -- First align the model horizontally. Then use its real bounding box to place
+    -- the lowest visible geometry directly on the base floor.
+    pcall(function()
+        model:PivotTo(CFrame.new(target.X, target.Y, target.Z))
+    end)
+
+    local ok, boxCf, boxSize = pcall(function()
+        return model:GetBoundingBox()
+    end)
+    if not ok or not boxCf or not boxSize then return end
+
+    local bottomY = boxCf.Position.Y - (boxSize.Y / 2)
+    local deltaY = (GROUND_Y + 0.05) - bottomY
+    pcall(function()
+        model:PivotTo(model:GetPivot() + Vector3.new(0, deltaY, 0))
+    end)
 end
 
 local function loadPlayer(player)
@@ -110,8 +136,8 @@ end
 
 local function makePad(parent, base, node, index)
     local pad=Instance.new("Part") pad.Name="TycoonPad_"..node.id pad.Size=Vector3.new(9,0.7,9) pad.Anchored=true pad.Material=Enum.Material.Neon pad.Color=Color3.fromRGB(25,235,65)
-    local basePos = base:GetPivot().Position
-    pad.Position = basePos + Vector3.new(-50 + ((index-1)%3)*18, 1.2, 39 - math.floor((index-1)/3)*14)
+    local basePos = baseGroundPosition(base)
+    pad.Position = basePos + Vector3.new(-50 + ((index-1)%3)*18, 0.38, 39 - math.floor((index-1)/3)*14)
     pad.Parent=parent
     pad:SetAttribute("NodeId",node.id)
     pad:SetAttribute("Cost",node.cost)
@@ -120,11 +146,11 @@ local function makePad(parent, base, node, index)
 end
 
 local function makeCollector(parent, base)
-    local basePos=base:GetPivot().Position
+    local basePos=baseGroundPosition(base)
     local console=Instance.new("Part") console.Name="TycoonCollector" console.Size=Vector3.new(10,8,5) console.Position=basePos+Vector3.new(-57,4,23) console.Anchored=true console.Material=Enum.Material.Metal console.Color=Color3.fromRGB(40,46,50) console.Parent=parent
     local screen=Instance.new("SurfaceGui") screen.Face=Enum.NormalId.Front screen.SizingMode=Enum.SurfaceGuiSizingMode.PixelsPerStud screen.PixelsPerStud=35 screen.Parent=console
     local text=Instance.new("TextLabel") text.Name="BankText" text.Size=UDim2.fromScale(1,1) text.BackgroundColor3=Color3.fromRGB(0,145,35) text.TextColor3=Color3.new(1,1,1) text.Font=Enum.Font.GothamBlack text.TextScaled=true text.Text="MOEDAS\n$0" text.Parent=screen
-    local collect=Instance.new("Part") collect.Name="CollectPad" collect.Size=Vector3.new(9,0.6,8) collect.Position=basePos+Vector3.new(-57,0.8,31) collect.Anchored=true collect.Material=Enum.Material.Neon collect.Color=Color3.fromRGB(20,240,55) collect.Parent=parent
+    local collect=Instance.new("Part") collect.Name="CollectPad" collect.Size=Vector3.new(9,0.6,8) collect.Position=basePos+Vector3.new(-57,0.32,31) collect.Anchored=true collect.Material=Enum.Material.Neon collect.Color=Color3.fromRGB(20,240,55) collect.Parent=parent
     addText(collect,"COLETAR",Color3.fromRGB(160,255,175))
     return console,collect,text
 end
@@ -133,12 +159,13 @@ local function renderPurchased(player, base, tycoonFolder)
     local data=profiles[player] if not data then return end
     local visuals=tycoonFolder:FindFirstChild("Purchased") or Instance.new("Folder") visuals.Name="Purchased" visuals.Parent=tycoonFolder
     visuals:ClearAllChildren()
+    local basePos = baseGroundPosition(base)
     for _,node in ipairs(NODES) do
         if data.purchased[node.id] then
             local model=loadVisual(node.id)
             model.Parent=visuals
-            local target=base:GetPivot().Position+node.offset
-            pcall(function() model:PivotTo(CFrame.new(target)) end)
+            local target=basePos+node.offset
+            groundModelAt(model,target)
         end
     end
 end
