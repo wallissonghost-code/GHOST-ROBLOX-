@@ -231,16 +231,19 @@ local function buildConveyor(plotIndex)
     folder.Name = "CrateConveyorSystem"
     folder.Parent = plotModel
 
-    local belt = makePart(folder, "ConveyorBelt", Vector3.new(9,1,45), center + Vector3.new(30,1.25,0), Color3.fromRGB(35,36,42), Enum.Material.Metal)
+    -- The museum entrance/front is +Z. Keep the conveyor just outside the facade
+    -- so it is the first system the owner sees when arriving at the base.
+    local conveyorZ = 38
+    local belt = makePart(folder, "ConveyorBelt", Vector3.new(45,1,9), center + Vector3.new(0,1.25,conveyorZ), Color3.fromRGB(35,36,42), Enum.Material.Metal)
     belt:SetAttribute("Conveyor", true)
-    makePart(folder, "RailLeft", Vector3.new(0.6,2,45), center + Vector3.new(25.1,2.1,0), Color3.fromRGB(91,62,170), Enum.Material.Neon)
-    makePart(folder, "RailRight", Vector3.new(0.6,2,45), center + Vector3.new(34.9,2.1,0), Color3.fromRGB(91,62,170), Enum.Material.Neon)
+    makePart(folder, "RailBack", Vector3.new(45,2,0.6), center + Vector3.new(0,2.1,conveyorZ - 4.9), Color3.fromRGB(91,62,170), Enum.Material.Neon)
+    makePart(folder, "RailFront", Vector3.new(45,2,0.6), center + Vector3.new(0,2.1,conveyorZ + 4.9), Color3.fromRGB(91,62,170), Enum.Material.Neon)
 
-    for z=-18,18,6 do
-        makePart(folder, "BeltSlat", Vector3.new(8.2,0.18,0.45), center + Vector3.new(30,1.82,z), Color3.fromRGB(82,84,94), Enum.Material.Metal)
+    for x=-18,18,6 do
+        makePart(folder, "BeltSlat", Vector3.new(0.45,0.18,8.2), center + Vector3.new(x,1.82,conveyorZ), Color3.fromRGB(82,84,94), Enum.Material.Metal)
     end
 
-    local station = makePart(folder, "ConveyorStation", Vector3.new(10,7,5), center + Vector3.new(30,4,-23.5), Color3.fromRGB(49,42,68), Enum.Material.Metal)
+    local station = makePart(folder, "ConveyorStation", Vector3.new(5,7,10), center + Vector3.new(-23.5,4,conveyorZ), Color3.fromRGB(49,42,68), Enum.Material.Metal)
     addLabel(station, "📦 ESTEIRA DE CAIXAS", Color3.fromRGB(230,220,255))
 
     local openingPositions = {
@@ -263,8 +266,8 @@ local function buildConveyor(plotIndex)
         activeCount = 0,
         openings = {},
         openingParts = openingParts,
-        startPosition = center + Vector3.new(30,4.2,20),
-        endPosition = center + Vector3.new(30,4.2,-20),
+        startPosition = center + Vector3.new(-20,4.2,conveyorZ),
+        endPosition = center + Vector3.new(20,4.2,conveyorZ),
     }
 end
 
