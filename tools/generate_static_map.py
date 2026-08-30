@@ -1,4 +1,4 @@
-import json, math
+import json
 
 WORLD = 16384
 TILE = 1024
@@ -15,113 +15,115 @@ REGIONS = [
     ("PlayerBases", (-4608, 5376), (5120, 3072), "Grass", (0.22, 0.34, 0.18)),
 ]
 
+
 def region_for(x, z):
     for name, (cx, cz), (sx, sz), material, color in REGIONS:
         if abs(x - cx) <= sx / 2 and abs(z - cz) <= sz / 2:
             return name, material, color
     return "Wilderness", "Grass", (0.28, 0.44, 0.22)
 
-def part(size, pos, material="Concrete", color=(0.5,0.5,0.5), collide=True, transparency=0):
-    return {"$className":"Part","$properties":{
-        "Anchored":True,"CanCollide":collide,"CanTouch":collide,"CanQuery":True,
-        "Size":list(size),"Position":list(pos),"Material":material,"Color":list(color),
-        "Transparency":transparency,"TopSurface":"Smooth","BottomSurface":"Smooth"}}
+
+def part(size, pos, material="Concrete", color=(0.5, 0.5, 0.5), collide=True, transparency=0):
+    return {"$className": "Part", "$properties": {
+        "Anchored": True, "CanCollide": collide, "CanTouch": collide, "CanQuery": True,
+        "Size": list(size), "Position": list(pos), "Material": material, "Color": list(color),
+        "Transparency": transparency, "TopSurface": "Smooth", "BottomSurface": "Smooth"
+    }}
+
 
 workspace = {"$properties": {"FallenPartsDestroyHeight": -1000}}
 
+# Entire 16,384 x 16,384 world baked directly into the place.
 for xi, x in enumerate(range(-HALF + TILE // 2, HALF, TILE)):
     for zi, z in enumerate(range(-HALF + TILE // 2, HALF, TILE)):
         region, material, color = region_for(x, z)
-        workspace[f"TILE_{xi}_{zi}_{region}"] = part((TILE,32,TILE),(x,-16,z),material,color)
+        workspace[f"TILE_{xi}_{zi}_{region}"] = part((TILE, 32, TILE), (x, -16, z), material, color)
 
+# Main highways.
 for i, z in enumerate(range(-HALF + TILE // 2, HALF, TILE)):
-    workspace[f"HIGHWAY_NS_{i}"] = part((140,3,TILE),(0,1.5,z),"Asphalt",(0.06,0.065,0.07))
+    workspace[f"HIGHWAY_NS_{i}"] = part((140, 3, TILE), (0, 1.5, z), "Concrete", (0.06, 0.065, 0.07))
 for i, x in enumerate(range(-HALF + TILE // 2, HALF, TILE)):
-    workspace[f"HIGHWAY_EW_{i}"] = part((TILE,3,140),(x,1.5,0),"Asphalt",(0.06,0.065,0.07))
+    workspace[f"HIGHWAY_EW_{i}"] = part((TILE, 3, 140), (x, 1.5, 0), "Concrete", (0.06, 0.065, 0.07))
 
+# Capital district: unmistakable city center near spawn.
 for n, x in enumerate(range(-1600, 1601, 400)):
-    workspace[f"CAP_ROAD_X_{n}"] = part((90,3,3600),(x,1.6,0),"Asphalt",(0.055,0.06,0.065))
+    workspace[f"CAP_ROAD_X_{n}"] = part((90, 3, 3600), (x, 1.6, 0), "Concrete", (0.055, 0.06, 0.065))
 for n, z in enumerate(range(-1600, 1601, 400)):
-    workspace[f"CAP_ROAD_Z_{n}"] = part((3600,3,90),(0,1.7,z),"Asphalt",(0.055,0.06,0.065))
+    workspace[f"CAP_ROAD_Z_{n}"] = part((3600, 3, 90), (0, 1.7, z), "Concrete", (0.055, 0.06, 0.065))
 
-building_index = 0
-for x in (-1400,-1000,-600,600,1000,1400):
-    for z in (-1400,-1000,-600,600,1000,1400):
-        h = 100 + ((abs(x)+abs(z)) // 200) % 6 * 45
-        building_index += 1
-        workspace[f"CAP_BUILDING_{building_index}"] = part((250,h,250),(x,h/2,z),"Concrete",(0.40,0.43,0.46))
-        workspace[f"CAP_ROOF_{building_index}"] = part((270,8,270),(x,h+4,z),"Metal",(0.12,0.14,0.16))
-workspace["CAPITAL_PLAZA"] = part((700,4,700),(0,2,0),"Marble",(0.65,0.67,0.68))
-workspace["CAPITAL_TOWER"] = part((120,420,120),(0,210,0),"Metal",(0.18,0.40,0.55))
+idx = 0
+for x in (-1400, -1000, -600, 600, 1000, 1400):
+    for z in (-1400, -1000, -600, 600, 1000, 1400):
+        idx += 1
+        h = 130 + (idx % 6) * 45
+        workspace[f"CAP_BUILDING_{idx}"] = part((250, h, 250), (x, h / 2, z), "Concrete", (0.40, 0.43, 0.46))
+        workspace[f"CAP_ROOF_{idx}"] = part((270, 8, 270), (x, h + 4, z), "Metal", (0.12, 0.14, 0.16))
 
-workspace["AIRPORT_RUNWAY"] = part((340,4,3000),(0,2,-5600),"Asphalt",(0.04,0.045,0.05))
-for i,z in enumerate(range(-6900,-4299,400)):
-    workspace[f"RUNWAY_MARK_{i}"] = part((24,5,180),(0,4,z),"Neon",(0.9,0.9,0.82),False)
-for i,x in enumerate((-1300,-900,900,1300)):
-    workspace[f"HANGAR_{i}"] = part((500,180,350),(x,90,-5200),"Metal",(0.30,0.33,0.35))
+workspace["CAPITAL_PLAZA"] = part((700, 4, 700), (0, 2, 0), "Marble", (0.65, 0.67, 0.68))
+workspace["CAPITAL_TOWER"] = part((120, 420, 120), (0, 210, 0), "Metal", (0.18, 0.40, 0.55))
 
+# Airport.
+workspace["AIRPORT_RUNWAY"] = part((340, 4, 3000), (0, 2, -5600), "Concrete", (0.04, 0.045, 0.05))
+for i, z in enumerate(range(-6900, -4299, 400)):
+    workspace[f"RUNWAY_MARK_{i}"] = part((24, 5, 180), (0, 4, z), "Neon", (0.9, 0.9, 0.82), False)
+for i, x in enumerate((-1300, -900, 900, 1300)):
+    workspace[f"HANGAR_{i}"] = part((500, 180, 350), (x, 90, -5200), "Metal", (0.30, 0.33, 0.35))
+
+# Forest.
 for i in range(70):
     x = -6800 + (i * 733) % 4200
     z = -6500 + (i * 977) % 4300
-    workspace[f"TREE_TRUNK_{i}"] = part((28,110,28),(x,55,z),"Wood",(0.26,0.14,0.07))
-    workspace[f"TREE_TOP_{i}"] = part((130,130,130),(x,150,z),"Grass",(0.08,0.28,0.08),False)
+    workspace[f"TREE_TRUNK_{i}"] = part((28, 110, 28), (x, 55, z), "Wood", (0.26, 0.14, 0.07))
+    workspace[f"TREE_TOP_{i}"] = part((130, 130, 130), (x, 150, z), "Grass", (0.08, 0.28, 0.08), False)
 
+# Desert.
 for i in range(30):
     x = 2800 + (i * 811) % 4200
     z = -6500 + (i * 617) % 4300
     h = 70 + (i % 5) * 35
-    workspace[f"DESERT_ROCK_{i}"] = part((180+(i%3)*90,h,160+(i%4)*70),(x,h/2,z),"Sandstone",(0.56,0.30,0.16))
+    workspace[f"DESERT_ROCK_{i}"] = part((180 + (i % 3) * 90, h, 160 + (i % 4) * 70), (x, h / 2, z), "Sandstone", (0.56, 0.30, 0.16))
 
+# Mountains.
 for i in range(32):
     x = 2900 + (i * 683) % 4100
     z = 2600 + (i * 911) % 3900
     h = 180 + (i % 7) * 110
     s = 220 + (i % 4) * 100
-    workspace[f"MOUNTAIN_{i}"] = part((s,h,s),(x,h/2,z),"Slate",(0.22,0.24,0.25))
+    workspace[f"MOUNTAIN_{i}"] = part((s, h, s), (x, h / 2, z), "Slate", (0.22, 0.24, 0.25))
 
-workspace["HARBOR_WATER"] = part((2200,20,2500),(-6000,-6,3200),"Glass",(0.05,0.38,0.62),False,0.18)
-for i,z in enumerate((2200,2700,3200,3700,4200)):
-    workspace[f"PIER_{i}"] = part((1200,20,120),(-5300,8,z),"Wood",(0.28,0.18,0.10))
-for i,z in enumerate((2300,3100,3900)):
-    workspace[f"PORT_WAREHOUSE_{i}"] = part((650,180,420),(-6800,90,z),"Metal",(0.30,0.33,0.34))
+# Harbor.
+workspace["HARBOR_WATER"] = part((2200, 20, 2500), (-6000, -6, 3200), "Glass", (0.05, 0.38, 0.62), False, 0.18)
+for i, z in enumerate((2200, 2700, 3200, 3700, 4200)):
+    workspace[f"PIER_{i}"] = part((1200, 20, 120), (-5300, 8, z), "Wood", (0.28, 0.18, 0.10))
+for i, z in enumerate((2300, 3100, 3900)):
+    workspace[f"PORT_WAREHOUSE_{i}"] = part((650, 180, 420), (-6800, 90, z), "Metal", (0.30, 0.33, 0.34))
 
-for i,x in enumerate((-1500,-700,700,1500)):
-    workspace[f"FACTORY_{i}"] = part((550,220,700),(x,110,5600),"Metal",(0.31,0.30,0.28))
-    workspace[f"STACK_{i}"] = part((80,420,80),(x+180,210,5200),"Brick",(0.24,0.23,0.22))
+# Industrial zone.
+for i, x in enumerate((-1500, -700, 700, 1500)):
+    workspace[f"FACTORY_{i}"] = part((550, 220, 700), (x, 110, 5600), "Metal", (0.31, 0.30, 0.28))
+    workspace[f"STACK_{i}"] = part((80, 420, 80), (x + 180, 210, 5200), "Brick", (0.24, 0.23, 0.22))
 
+# 12 reserved base plots.
 plot = 0
-for row,z in enumerate((4700,5500,6300)):
-    for col,x in enumerate((-6700,-5700,-4700,-3700)):
+for z in (4700, 5500, 6300):
+    for x in (-6700, -5700, -4700, -3700):
         plot += 1
-        workspace[f"BASE_PLOT_{plot}"] = part((820,6,620),(x,3,z),"Concrete",(0.26,0.29,0.27))
-        workspace[f"BASE_PAD_{plot}"] = part((90,5,90),(x,7,z),"Neon",(0.10,0.80,0.32),False)
+        workspace[f"BASE_PLOT_{plot}"] = part((820, 6, 620), (x, 3, z), "Concrete", (0.26, 0.29, 0.27))
+        workspace[f"BASE_PAD_{plot}"] = part((90, 5, 90), (x, 7, z), "Neon", (0.10, 0.80, 0.32), False)
 
-for idx,(name,(cx,cz),_size,_material,color) in enumerate(REGIONS):
-    workspace[f"REGION_TOWER_{name}"] = part((36,300,36),(cx,150,cz),"Neon",color,False)
-    workspace[f"REGION_TOP_{name}"] = part((160,28,160),(cx,314,cz),"Neon",color,False)
-
-workspace["STATIC_SPAWN"] = {"$className":"SpawnLocation","$properties":{
-    "Anchored":True,"Neutral":True,"CanCollide":True,"Size":[40,2,40],"Position":[220,6,220],
-    "Material":"Neon","Color":[0.1,0.85,0.3]}}
+# Spawn is baked into the city center. No script may move the player elsewhere.
+workspace["STATIC_SPAWN"] = {"$className": "SpawnLocation", "$properties": {
+    "Anchored": True, "Neutral": True, "CanCollide": True,
+    "Size": [40, 2, 40], "Position": [220, 6, 220],
+    "Material": "Neon", "Color": [0.1, 0.85, 0.3]
+}}
 
 project = {
-    "name":"LicensedMilitaryOpenWorld",
-    "tree":{
-        "$className":"DataModel",
-        "Workspace":workspace,
-        "ServerStorage":{
-            "TycoonKit":{"$path":"src/vendor/TycoonKit"}
-        },
-        "ServerScriptService":{
-            "PremiumAssetLoader":{"$path":"src/server/PremiumAssetLoader.server.luau"},
-            "OfficialWeaponsLoader":{"$path":"src/server/OfficialWeaponsLoader.server.luau"},
-            "GameBootstrap":{"$path":"src/server/GameBootstrap.server.luau"}
-        },
-        "StarterPlayer":{
-            "StarterPlayerScripts":{
-                "HUD":{"$path":"src/client/HUD.client.luau"}
-            }
-        }
+    "name": "LicensedMilitaryOpenWorldStable",
+    "tree": {
+        "$className": "DataModel",
+        "Workspace": workspace
     }
 }
-print(json.dumps(project,separators=(",",":")))
+
+print(json.dumps(project, separators=(",", ":")))
