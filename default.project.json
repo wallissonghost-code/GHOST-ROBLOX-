@@ -7,11 +7,13 @@
     },
     "ServerScriptService": {
       "WorldBuilder": {"$path": "src/server/WorldBuilder.server.luau"},
-      "GameService": {"$path": "src/server/GameService.server.luau"}
+      "GameService": {"$path": "src/server/GameService.server.luau"},
+      "CombatService": {"$path": "src/server/CombatService.server.luau"}
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "HUD": {"$path": "src/client/HUD.client.luau"}
+        "HUD": {"$path": "src/client/HUD.client.luau"},
+        "WeaponClient": {"$path": "src/client/WeaponClient.client.luau"}
       }
     }
   }
