@@ -1,6 +1,9 @@
 {
-  "name": "BlankRobloxProjectV2",
+  "name": "GhostMegaWorld",
   "tree": {
-    "$className": "DataModel"
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "MegaWorld": {"$path": "src/server/MegaWorld.server.luau"}
+    }
   }
 }
