@@ -1,24 +1,6 @@
 {
-  "name": "OpenWorldMilitary",
+  "name": "BlankRobloxProject",
   "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": {
-      "GameConfig": {"$path": "src/shared/GameConfig.luau"}
-    },
-    "ServerScriptService": {
-      "WorldBuilder": {"$path": "src/server/WorldBuilder.server.luau"},
-      "GameService": {"$path": "src/server/GameService.server.luau"},
-      "CombatService": {"$path": "src/server/CombatService.server.luau"},
-      "AutoBaseService": {"$path": "src/server/AutoBaseService.server.luau"},
-      "PremiumAssetCatalog": {"$path": "src/server/PremiumAssetCatalog.luau"},
-      "TycoonBuildService": {"$path": "src/server/TycoonBuildService.server.luau"},
-      "PremiumWorldService": {"$path": "src/server/PremiumWorldService.server.luau"}
-    },
-    "StarterPlayer": {
-      "StarterPlayerScripts": {
-        "HUD": {"$path": "src/client/HUD.client.luau"},
-        "WeaponClient": {"$path": "src/client/WeaponClient.client.luau"}
-      }
-    }
+    "$className": "DataModel"
   }
 }
