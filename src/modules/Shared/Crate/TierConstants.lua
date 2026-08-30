@@ -1,2 +1,10 @@
-local function t(n,c)return table.freeze({Name=n,Color=c})end
-return table.freeze({[1]=t("Common",Color3.fromRGB(217,216,212)),[2]=t("Rare",Color3.fromRGB(97,159,252)),[3]=t("Epic",Color3.fromRGB(232,103,232)),[4]=t("Legendary",Color3.fromRGB(248,202,52))})
+local function tier(name, color)
+	return table.freeze({ Name = name, Color = color })
+end
+
+return table.freeze({
+	[1] = tier("Common", Color3.fromRGB(195, 198, 205)),
+	[2] = tier("Rare", Color3.fromRGB(87, 157, 255)),
+	[3] = tier("Epic", Color3.fromRGB(201, 92, 255)),
+	[4] = tier("Legendary", Color3.fromRGB(255, 201, 64)),
+})

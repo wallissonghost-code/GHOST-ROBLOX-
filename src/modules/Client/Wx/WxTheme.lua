@@ -1,1 +1,9 @@
-return table.freeze({BG=Color3.new(.95,.95,.95),BG_MID=Color3.new(.91,.91,.91),TEXT=Color3.fromHex("#141414"),PRIMARY_A=Color3.fromHex("#5f6fe8"),PRIMARY_B=Color3.fromHex("#5369e0"),PATTERN_STRIPE="rbxassetid://14167167697",ID_SANS=12187365977})
+return table.freeze({
+	BG = Color3.fromRGB(17, 19, 27),
+	BG_MID = Color3.fromRGB(27, 30, 42),
+	TEXT = Color3.fromRGB(242, 244, 250),
+	PRIMARY_A = Color3.fromRGB(87, 57, 173),
+	PRIMARY_B = Color3.fromRGB(180, 112, 255),
+	PATTERN_STRIPE = "rbxassetid://14167167697",
+	ID_SANS = 12187365977,
+})

@@ -1,5 +1,5 @@
 {
-  "name": "GhostRngBase",
+  "name": "GhostRNG",
   "globIgnorePaths": ["**/.package-lock.json"],
   "tree": {
     "$className": "DataModel",

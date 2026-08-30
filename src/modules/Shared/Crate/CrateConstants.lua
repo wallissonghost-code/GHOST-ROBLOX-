@@ -1,2 +1,32 @@
-local function e(index,tier)local c=BrickColor.new(index);return table.freeze({Name=c.Name,Color=c.Color,Tier=tier})end
-return table.freeze({e(1,1),e(2,1),e(3,1),e(5,1),e(6,1),e(9,1),e(11,4),e(18,1),e(21,2),e(23,2),e(24,2),e(26,1),e(28,2),e(37,1),e(40,3),e(45,1),e(100,1),e(101,1),e(102,1),e(104,3),e(106,1),e(107,1),e(110,2),e(124,2),e(127,1),e(131,1),e(133,1),e(134,1),e(135,1),e(140,1),e(151,1),e(154,1),e(190,2),e(191,2),e(195,1),e(199,1),e(211,1),e(221,1),e(223,1),e(268,1),e(301,1),e(303,1),e(307,3),e(315,3),e(316,3),e(327,3),e(330,1),e(331,2),e(332,3),e(333,3),e(1001,1),e(1003,3),e(1004,3),e(1005,2),e(1006,2),e(1009,3),e(1010,3),e(1013,3),e(1015,3),e(1016,3),e(1018,2),e(1019,2),e(1024,4),e(1025,4),e(1026,4),e(1027,4),e(1028,4),e(1029,4),e(1030,4),e(1031,3),e(1032,3)})
+local function relic(name, color, tier, weight)
+	return table.freeze({
+		Name = name,
+		Color = color,
+		Tier = tier,
+		Weight = weight,
+	})
+end
+
+return table.freeze({
+	relic("Rusty Compass", Color3.fromRGB(145, 108, 74), 1, 240),
+	relic("Old Coin", Color3.fromRGB(170, 145, 76), 1, 220),
+	relic("Broken Idol", Color3.fromRGB(112, 108, 101), 1, 185),
+	relic("Ancient Key", Color3.fromRGB(160, 130, 77), 1, 150),
+	relic("Moon Stone", Color3.fromRGB(163, 173, 195), 1, 120),
+
+	relic("Amber Mask", Color3.fromRGB(230, 139, 54), 2, 65),
+	relic("Silver Eye", Color3.fromRGB(145, 181, 212), 2, 48),
+	relic("Runic Skull", Color3.fromRGB(93, 139, 179), 2, 35),
+	relic("Frozen Sigil", Color3.fromRGB(85, 203, 240), 2, 25),
+	relic("Blood Charm", Color3.fromRGB(190, 50, 69), 2, 18),
+
+	relic("Void Crown", Color3.fromRGB(120, 65, 202), 3, 8),
+	relic("Angel Core", Color3.fromRGB(242, 224, 151), 3, 5),
+	relic("Glitched Cube", Color3.fromRGB(223, 67, 242), 3, 3),
+	relic("Celestial Orb", Color3.fromRGB(94, 226, 255), 3, 2),
+
+	relic("Reality Key", Color3.fromRGB(255, 190, 50), 4, 0.8),
+	relic("Black Halo", Color3.fromRGB(80, 50, 110), 4, 0.35),
+	relic("Origin Fragment", Color3.fromRGB(255, 236, 138), 4, 0.12),
+	relic("Zero Relic", Color3.fromRGB(235, 245, 255), 4, 0.04),
+})
