@@ -8,7 +8,8 @@
     "ServerScriptService": {
       "WorldBuilder": {"$path": "src/server/WorldBuilder.server.luau"},
       "GameService": {"$path": "src/server/GameService.server.luau"},
-      "CombatService": {"$path": "src/server/CombatService.server.luau"}
+      "CombatService": {"$path": "src/server/CombatService.server.luau"},
+      "AutoBaseService": {"$path": "src/server/AutoBaseService.server.luau"}
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
