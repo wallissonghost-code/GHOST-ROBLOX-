@@ -1,9 +1,9 @@
+-- Creator Store visual integration. Asset-specific terms remain with their publishers.
 local InsertService = game:GetService("InsertService")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
 local ASSETS = {
-	-- Complete environment kits from Roblox Creator Store.
 	{ key="CityMap", id=13293134923, center=Vector3.new(0,0,0), targetSpan=3600 },
 	{ key="AirportMap", id=6766877061, center=Vector3.new(0,0,-5600), targetSpan=2800 },
 	{ key="ForestMap", id=4456737684, center=Vector3.new(-4600,0,-4100), targetSpan=3900 },
