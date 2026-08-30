@@ -2,6 +2,38 @@
   "name": "GhostMegaWorld",
   "tree": {
     "$className": "DataModel",
+    "Workspace": {
+      "$properties": {
+        "FallenPartsDestroyHeight": -1000
+      },
+      "STATIC_FOUNDATION": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "CanCollide": true,
+          "CanTouch": true,
+          "CanQuery": true,
+          "Size": [2048, 40, 2048],
+          "Position": [0, -20, 0],
+          "Material": "Grass",
+          "Color": [0.22, 0.42, 0.18],
+          "TopSurface": "Smooth",
+          "BottomSurface": "Smooth"
+        }
+      },
+      "STATIC_SPAWN": {
+        "$className": "SpawnLocation",
+        "$properties": {
+          "Anchored": true,
+          "Neutral": true,
+          "CanCollide": true,
+          "Size": [32, 2, 32],
+          "Position": [0, 2, 0],
+          "Material": "Neon",
+          "Color": [0.1, 0.85, 0.3]
+        }
+      }
+    },
     "ServerScriptService": {
       "MegaWorld": {"$path": "src/server/MegaWorld.server.luau"},
       "RegionAssets": {"$path": "src/server/RegionAssets.server.luau"}
