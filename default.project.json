@@ -1,19 +1,17 @@
 {
-  "name": "GhostRNG",
-  "globIgnorePaths": ["**/.package-lock.json"],
+  "name": "OpenWorldMilitary",
   "tree": {
     "$className": "DataModel",
+    "ReplicatedStorage": {
+      "GameConfig": {"$path": "src/shared/GameConfig.luau"}
+    },
     "ServerScriptService": {
-      "ColorRng": {
-        "$className": "Folder",
-        "game": { "$path": "src/modules" },
-        "node_modules": { "$path": "node_modules" }
-      },
-      "ColorRngScripts": { "$path": "src/scripts/Server" }
+      "WorldBuilder": {"$path": "src/server/WorldBuilder.server.luau"},
+      "GameService": {"$path": "src/server/GameService.server.luau"}
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "ColorRngScripts": { "$path": "src/scripts/Client" }
+        "HUD": {"$path": "src/client/HUD.client.luau"}
       }
     }
   }

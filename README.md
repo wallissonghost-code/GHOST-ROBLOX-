@@ -1,22 +1,8 @@
-# Ghost RNG Base
+# Open World Ops
 
-Licensed Roblox RNG base derived from Color RNG by OttoHatt.
+Protótipo Roblox de ação/open-world com bases militares pessoais, renda, upgrades, missões, garagem, roubo ao banco e sistema WANTED.
 
-Current baseline includes:
-- server-authoritative unboxing;
-- DataStore-backed collection inventory;
-- animated reveal UI;
-- rarity tiers;
-- responsive inventory UI;
-- Rojo/Nevermore project structure.
+A direção visual/mecânica é inspirada genericamente em jogos de tycoon militar e ação urbana; nenhum código, mapa, nome ou asset proprietário de Military Tycoon ou Wanted foi copiado.
 
-## Development
-
-```bash
-npm install
-rojo serve
-```
-
-## License
-
-AGPL-3.0-or-later. See `LICENSE.md` and `ORIGINAL_SOURCE.md`.
+## Base licenciada
+A arquitetura de tycoon foi inspirada/adaptada a partir de `spavdigital/roblox-tycoon`, disponibilizado sob licença MIT. A licença original está preservada em `THIRD_PARTY_LICENSES/roblox-tycoon-MIT.txt`.
