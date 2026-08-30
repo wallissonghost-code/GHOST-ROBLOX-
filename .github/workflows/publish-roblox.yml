@@ -32,13 +32,13 @@ jobs:
           set -euo pipefail
           go install github.com/anaminus/rbxmk/rbxmk@v0.9.1
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
-          "$HOME/go/bin/rbxmk" --version || true
+          "$HOME/go/bin/rbxmk" version
 
       - name: Download single licensed map
         shell: bash
         run: |
           set -euo pipefail
-          "$HOME/go/bin/rbxmk" download-asset -id "$MAP_ASSET_ID" SingleMap.rbxm
+          "$HOME/go/bin/rbxmk" download-asset --id "$MAP_ASSET_ID" SingleMap.rbxm
           test -s SingleMap.rbxm
           echo "Downloaded map bytes: $(wc -c < SingleMap.rbxm)"
 
