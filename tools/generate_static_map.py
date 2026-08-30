@@ -2,12 +2,30 @@ import json, math
 
 WORLD = 16384
 HALF = WORLD // 2
-LAND_TILE = 512
+TILE = 512
 WATER_TILE = 1024
-LAND_RADIUS = 7600
+ISLAND_RADIUS = 7480
+CENTER_ISLAND_RADIUS = 1350
+INNER_LAKE_R1 = 1600
+INNER_LAKE_R2 = 2750
+
+TERRITORIES = [
+    (1, -5200, 4300, "PLAINS"),
+    (2, -5850, 900, "FOREST"),
+    (3, -4400, -3300, "FOREST"),
+    (4, -700, -5600, "SNOW"),
+    (5, 2800, -4550, "FOREST"),
+    (6, 5650, -2500, "DESERT"),
+    (7, 5800, 1100, "PLAINS"),
+    (8, 4700, 5000, "FOREST"),
+    (9, 900, 6500, "COAST"),
+    (10, 1700, 3850, "FOREST"),
+    (11, -1900, 3900, "FOREST"),
+    (12, -5000, -500, "PLAINS"),
+]
 
 
-def part(size, pos, material="Grass", color=(0.3, 0.45, 0.22), collide=True, transparency=0, cls="Part", shape=None):
+def part(size, pos, material="Grass", color=(0.3,0.45,0.22), collide=True, transparency=0, shape=None, rotation=None):
     props = {
         "Anchored": True,
         "CanCollide": collide,
@@ -23,203 +41,184 @@ def part(size, pos, material="Grass", color=(0.3, 0.45, 0.22), collide=True, tra
     }
     if shape:
         props["Shape"] = shape
-    return {"$className": cls, "$properties": props}
+    if rotation:
+        props["Orientation"] = list(rotation)
+    return {"$className":"Part", "$properties":props}
 
 
-def land_profile(x, z):
-    d = math.sqrt(x*x + z*z)
-    edge = max(0.0, min(1.0, (LAND_RADIUS - d) / 1400.0))
-    wave = math.sin(x / 930.0) * 13 + math.cos(z / 1170.0) * 10 + math.sin((x+z)/1550.0) * 7
-    base = 24 + edge * 34 + wave
-
-    # Regional shaping.
-    if x > 2500 and z > 1800:  # mountains
-        base += 55 + 35 * math.sin(x/420.0) + 25 * math.cos(z/510.0)
-    elif x > 2600 and z < -1800:  # desert mesas
-        base += 12 + 12 * math.sin(x/700.0)
-    elif x < -2600 and z < -1600:  # forest hills
-        base += 25 + 18 * math.sin(z/650.0)
-    elif x < -3000 and z > 1800:  # harbor coast lowlands
-        base -= 8
-    elif abs(x) < 2300 and abs(z) < 2300:  # city basin
-        base = 34
-    elif abs(x) < 2200 and z < -4300:  # airport plateau
-        base = 30
-    elif abs(x) < 2300 and z > 4300:  # industrial plateau
-        base = 36
-    return max(8, base)
+def island_edge(x,z):
+    d = math.sqrt(x*x+z*z)
+    noise = 330*math.sin(z/760.0) + 250*math.cos(x/920.0) + 180*math.sin((x-z)/580.0) + 120*math.cos((x+z)/430.0)
+    return d <= ISLAND_RADIUS + noise
 
 
-def biome(x, z):
-    if abs(x) < 2300 and abs(z) < 2300:
-        return "Concrete", (0.34, 0.36, 0.37), "CAPITAL"
-    if abs(x) < 2200 and z < -4200:
-        return "Concrete", (0.25, 0.27, 0.29), "AIRPORT"
-    if x < -2500 and z < -1300:
-        return "Grass", (0.13, 0.31, 0.12), "FOREST"
-    if x > 2500 and z < -1300:
-        return "Sand", (0.72, 0.53, 0.29), "DESERT"
-    if x > 2500 and z > 1300:
-        return "Slate", (0.28, 0.30, 0.31), "MOUNTAINS"
-    if x < -3300 and z > 1400:
-        return "Grass", (0.24, 0.39, 0.20), "HARBOR"
-    if abs(x) < 2300 and z > 4200:
-        return "Concrete", (0.34, 0.31, 0.27), "INDUSTRIAL"
-    if x < -2600 and z > 4300:
-        return "Grass", (0.22, 0.38, 0.18), "PLAYER_BASES"
-    return "Grass", (0.28, 0.45, 0.22), "WILDERNESS"
+def biome_for(x,z):
+    # Snow crown at the north.
+    if z < -4300 and -2200 < x < 1600:
+        return "Snow", (0.82,0.86,0.90), "SNOW"
+    # Desert in the north-east.
+    if x > 3400 and z < -900:
+        return "Sand", (0.73,0.54,0.30), "DESERT"
+    # Darker western/northern forests.
+    if x < -2500 and z < 1500:
+        return "Grass", (0.13,0.31,0.12), "FOREST"
+    if x > 1000 and z < -2500:
+        return "Grass", (0.18,0.38,0.15), "FOREST"
+    # Southern coast/plains.
+    if z > 4800:
+        return "Grass", (0.31,0.48,0.23), "COAST"
+    return "Grass", (0.27,0.45,0.21), "PLAINS"
 
 
-workspace = {"$properties": {"FallenPartsDestroyHeight": -600}}
+def elevation(x,z):
+    d = math.sqrt(x*x+z*z)
+    base = 34 + 15*math.sin(x/950.0) + 11*math.cos(z/1120.0) + 7*math.sin((x+z)/720.0)
+    # Mountain belt around snow region and NW highlands.
+    if z < -3600 and -2800 < x < 1500:
+        base += 80 + 45*math.sin(x/430.0) + 35*math.cos(z/510.0)
+    elif x < -3000 and z < -1800:
+        base += 28 + 18*math.sin((x-z)/600.0)
+    elif x > 3600 and z < -1000:
+        base += 16 + 14*math.sin(x/680.0)
+    # flatten territory clearings
+    for _,tx,tz,_ in TERRITORIES:
+        td = math.sqrt((x-tx)**2 + (z-tz)**2)
+        if td < 850:
+            return 42
+    if d < CENTER_ISLAND_RADIUS:
+        return 46
+    return max(18, base)
 
-# Ocean baked beneath and around the island.
-wi = 0
+
+def road_between(workspace, name, x1,z1,x2,z2,width=72,y=52):
+    dx, dz = x2-x1, z2-z1
+    length = math.sqrt(dx*dx+dz*dz)
+    if length < 1:
+        return
+    angle = math.degrees(math.atan2(dx,dz))
+    cx, cz = (x1+x2)/2, (z1+z2)/2
+    workspace[name] = part((width,4,length),(cx,y,cz),"Concrete",(0.095,0.10,0.105),True,0,None,(0,angle,0))
+
+
+workspace = {"$properties":{"FallenPartsDestroyHeight":-700}}
+
+# Ocean base.
+idx = 0
 for x in range(-HALF + WATER_TILE//2, HALF, WATER_TILE):
     for z in range(-HALF + WATER_TILE//2, HALF, WATER_TILE):
-        wi += 1
-        workspace[f"OCEAN_{wi}"] = part(
-            (WATER_TILE, 20, WATER_TILE), (x, -10, z), "Glass", (0.05, 0.35, 0.58), False, 0.18
-        )
+        idx += 1
+        workspace[f"OCEAN_{idx}"] = part((WATER_TILE,18,WATER_TILE),(x,-9,z),"Glass",(0.035,0.29,0.50),False,0.12)
 
-# Organic continent made from many medium tiles at varying height.
+# Main island terrain. The circular inner lake is carved out here.
 li = 0
-for x in range(-HALF + LAND_TILE//2, HALF, LAND_TILE):
-    for z in range(-HALF + LAND_TILE//2, HALF, LAND_TILE):
-        d = math.sqrt(x*x + z*z)
-        coast_noise = 260*math.sin(z/700.0) + 180*math.cos(x/930.0) + 120*math.sin((x-z)/510.0)
-        if d > LAND_RADIUS + coast_noise:
+for x in range(-HALF + TILE//2, HALF, TILE):
+    for z in range(-HALF + TILE//2, HALF, TILE):
+        if not island_edge(x,z):
             continue
-        h = land_profile(x, z)
-        material, color, name = biome(x, z)
+        d = math.sqrt(x*x+z*z)
+        if INNER_LAKE_R1 < d < INNER_LAKE_R2:
+            continue
+        mat,color,bname = biome_for(x,z)
+        h = elevation(x,z)
         li += 1
-        workspace[f"LAND_{li}_{name}"] = part((LAND_TILE+4, h, LAND_TILE+4), (x, h/2, z), material, color)
+        workspace[f"LAND_{li}_{bname}"] = part((TILE+10,h,TILE+10),(x,h/2,z),mat,color)
 
-# Central city plaza and radial safe spawn district.
-workspace["CAPITAL_PLAZA"] = part((1100, 10, 1100), (0, 40, 0), "Concrete", (0.50, 0.52, 0.54))
-workspace["CAPITAL_GREEN"] = part((420, 12, 420), (0, 46, 0), "Grass", (0.18, 0.42, 0.18))
+# Central neutral island is clean and circular-ish via layered pads.
+workspace["CENTER_ISLAND_BASE"] = part((2400,44,2400),(0,22,0),"Grass",(0.25,0.46,0.22))
+workspace["CENTER_ISLAND_INNER"] = part((1700,16,1700),(0,52,0),"Grass",(0.20,0.42,0.18))
+workspace["CENTER_RING_ROAD"] = part((2050,4,2050),(0,62,0),"Concrete",(0.10,0.105,0.11),True,0,"Cylinder",(0,0,90))
+workspace["CENTER_GREEN"] = part((1500,8,1500),(0,66,0),"Grass",(0.16,0.38,0.16),True,0,"Cylinder",(0,0,90))
 
-# Main cross-country highways.
-for i, z in enumerate(range(-6656, 6657, 512)):
-    if abs(z) < 7600:
-        y = land_profile(0, z) + 2
-        workspace[f"HW_NS_{i}"] = part((120, 4, 520), (0, y, z), "Concrete", (0.07,0.075,0.08))
-for i, x in enumerate(range(-6656, 6657, 512)):
-    if abs(x) < 7600:
-        y = land_profile(x, 0) + 2
-        workspace[f"HW_EW_{i}"] = part((520, 4, 120), (x, y, 0), "Concrete", (0.07,0.075,0.08))
+# Inner lake water ring (four broad quadrants, underneath bridges).
+for n,(x,z,sx,sz) in enumerate([
+    (0,-2150,5200,1150),(0,2150,5200,1150),(-2150,0,1150,3000),(2150,0,1150,3000)
+]):
+    workspace[f"INNER_LAKE_{n}"] = part((sx,14,sz),(x,14,z),"Glass",(0.035,0.36,0.60),False,0.10)
 
-# City street grid with blocks kept away from spawn.
-city_roads = (-1800,-1350,-900,-450,450,900,1350,1800)
-for i, x in enumerate(city_roads):
-    workspace[f"CITY_V_{i}"] = part((80,4,4000),(x,38,0),"Concrete",(0.065,0.07,0.075))
-for i, z in enumerate(city_roads):
-    workspace[f"CITY_H_{i}"] = part((4000,4,80),(0,38,z),"Concrete",(0.065,0.07,0.075))
+# Territory clearings: natural flat pads, no buildings.
+for tid,tx,tz,bio in TERRITORIES:
+    mat = "Snow" if bio=="SNOW" else "Sand" if bio=="DESERT" else "Grass"
+    col = (0.82,0.86,0.90) if bio=="SNOW" else (0.75,0.55,0.31) if bio=="DESERT" else (0.24,0.45,0.20)
+    workspace[f"TERRITORY_{tid}_CLEARING"] = part((1500,10,1500),(tx,47,tz),mat,col,True,0,"Cylinder",(0,0,90))
+    # subtle capture boundary ring using transparent neon disc under clearing edge
+    workspace[f"TERRITORY_{tid}_MARKER"] = part((1580,3,1580),(tx,53,tz),"Neon",(0.16,0.62,0.95),False,0.72,"Cylinder",(0,0,90))
+    workspace[f"TERRITORY_{tid}_INNER"] = part((1420,4,1420),(tx,55,tz),mat,col,True,0,"Cylinder",(0,0,90))
 
-# Skyline: varied towers, deliberately outside safe central square.
-bi = 0
-for x in (-1650,-1200,-750,750,1200,1650):
-    for z in (-1650,-1200,-750,750,1200,1650):
-        bi += 1
-        h = 120 + ((bi*73) % 260)
-        w = 210 + ((bi*31) % 120)
-        base_y = 34
-        workspace[f"CITY_BUILDING_{bi}"] = part((w,h,w),(x,base_y+h/2,z),"Concrete",(0.38+0.02*(bi%3),0.41,0.44))
-        workspace[f"CITY_ROOF_{bi}"] = part((w+14,8,w+14),(x,base_y+h+4,z),"Metal",(0.13,0.15,0.17))
-        # window strips
-        for f in range(1, max(2,int(h//70))):
-            wy = base_y + f*65
-            workspace[f"CITY_WIN_{bi}_{f}"] = part((w+4,8,w+4),(x,wy,z),"Neon",(0.10,0.32,0.48),False,0.15)
+# Radial highways from every territory to the central lake edge.
+for tid,tx,tz,_ in TERRITORIES:
+    d = math.sqrt(tx*tx+tz*tz)
+    ex, ez = tx*(INNER_LAKE_R2/d), tz*(INNER_LAKE_R2/d)
+    road_between(workspace,f"ROAD_T{tid}",tx,tz,ex,ez,76,58)
+    # bridge across inner lake to central island
+    ix, iz = tx*(CENTER_ISLAND_RADIUS/d), tz*(CENTER_ISLAND_RADIUS/d)
+    road_between(workspace,f"BRIDGE_T{tid}",ex,ez,ix,iz,86,62)
 
-# Airport plateau: long runway, taxiways and terminals.
-air_y = 34
-workspace["AIRPORT_RUNWAY"] = part((300,5,3300),(0,air_y,-5600),"Concrete",(0.045,0.05,0.055))
-workspace["AIRPORT_TAXI_W"] = part((140,4,2800),(-650,air_y,-5600),"Concrete",(0.11,0.115,0.12))
-workspace["AIRPORT_TAXI_E"] = part((140,4,2800),(650,air_y,-5600),"Concrete",(0.11,0.115,0.12))
-for i,z in enumerate(range(-7000,-4199,300)):
-    workspace[f"RUNWAY_MARK_{i}"] = part((18,6,120),(0,air_y+4,z),"Neon",(0.95,0.95,0.86),False)
-for i,x in enumerate((-1500,-1050,1050,1500)):
-    workspace[f"AIR_HANGAR_{i}"] = part((360,170,480),(x,air_y+85,-5200),"Metal",(0.29,0.32,0.34))
-workspace["AIR_TERMINAL"] = part((900,160,360),(0,air_y+80,-4100),"Concrete",(0.42,0.45,0.47))
+# Outer ring road joining all 12 territories.
+ordered = TERRITORIES
+for i in range(len(ordered)):
+    a = ordered[i]
+    b = ordered[(i+1)%len(ordered)]
+    road_between(workspace,f"OUTER_LINK_{i}",a[1],a[2],b[1],b[2],60,56)
 
-# Forest: denser trees and small clearings.
-for i in range(150):
-    x = -6900 + (i*619) % 4300
-    z = -6600 + (i*883) % 4900
-    if math.sqrt(x*x+z*z) > 7450 or abs(x) < 2700:
+# Forest masses, concentrated away from roads and clearings.
+for i in range(220):
+    x = -6800 + (i*619) % 6200
+    z = -6100 + (i*883) % 9000
+    if not island_edge(x,z):
         continue
-    gy = land_profile(x,z)
-    trunk_h = 70 + (i%5)*12
-    workspace[f"TREE_TRUNK_{i}"] = part((22,trunk_h,22),(x,gy+trunk_h/2,z),"Wood",(0.24,0.13,0.06))
-    workspace[f"TREE_TOP_{i}"] = part((115,115,115),(x,gy+trunk_h+40,z),"Grass",(0.07,0.25,0.07),False,0,"Part","Ball")
-
-# Desert: mesas, boulders, dry route.
-for i in range(55):
-    x = 2850 + (i*743) % 4300
-    z = -6700 + (i*577) % 5000
-    if math.sqrt(x*x+z*z) > 7450:
+    if x > 3400 and z < -900:
         continue
-    gy = land_profile(x,z)
-    s = 90 + (i%5)*45
-    h = 45 + (i%4)*35
-    workspace[f"DESERT_ROCK_{i}"] = part((s,h,s*0.85),(x,gy+h/2,z),"Sand",(0.58,0.34,0.18))
-
-# Mountain region: layered rocky peaks.
-for i in range(48):
-    x = 2850 + (i*641) % 4300
-    z = 1900 + (i*829) % 5000
-    if math.sqrt(x*x+z*z) > 7450:
+    if z < -4300 and -2200 < x < 1600:
         continue
-    gy = land_profile(x,z)
-    h = 180 + (i%7)*95
-    s = 170 + (i%4)*90
-    workspace[f"PEAK_{i}"] = part((s,h,s),(x,gy+h/2,z),"Slate",(0.20,0.22,0.23))
-    workspace[f"PEAK_CAP_{i}"] = part((s*0.7,h*0.22,s*0.7),(x,gy+h*0.93,z),"Concrete",(0.66,0.67,0.67),False)
+    if math.sqrt(x*x+z*z) < 3000:
+        continue
+    if any(math.sqrt((x-tx)**2+(z-tz)**2) < 1000 for _,tx,tz,_ in TERRITORIES):
+        continue
+    gy=elevation(x,z)
+    trunk=65+(i%5)*10
+    workspace[f"TREE_TRUNK_{i}"] = part((18,trunk,18),(x,gy+trunk/2,z),"Wood",(0.24,0.13,0.06))
+    workspace[f"TREE_TOP_{i}"] = part((105,105,105),(x,gy+trunk+35,z),"Grass",(0.07,0.24,0.07),False,0,"Ball")
 
-# Harbor: water inlet, piers, warehouses and container yard.
-harbor_y = 18
-workspace["HARBOR_BASIN"] = part((2600,24,2600),(-5850,6,3350),"Glass",(0.03,0.32,0.56),False,0.12)
-for i,z in enumerate((2400,2900,3400,3900,4400)):
-    workspace[f"PIER_{i}"] = part((1250,18,110),(-5200,harbor_y,z),"Wood",(0.27,0.17,0.09))
-for i,z in enumerate((2450,3350,4250)):
-    workspace[f"PORT_WH_{i}"] = part((620,160,420),(-6900,harbor_y+80,z),"Metal",(0.28,0.31,0.32))
-for i in range(24):
-    x = -6400 + (i%6)*150
-    z = 4800 + (i//6)*120
-    workspace[f"CONTAINER_{i}"] = part((120,90,70),(x,65,z),"Metal",(0.25+0.08*(i%3),0.20+0.05*((i+1)%3),0.18+0.07*((i+2)%3)))
+# Snow mountain range at north.
+for i in range(52):
+    x = -2100 + (i*733)%3600
+    z = -6900 + (i*547)%2800
+    if not island_edge(x,z):
+        continue
+    gy=elevation(x,z)
+    h=180+(i%7)*90
+    s=150+(i%4)*85
+    workspace[f"SNOW_PEAK_{i}"] = part((s,h,s),(x,gy+h/2,z),"Slate",(0.30,0.32,0.34))
+    workspace[f"SNOW_CAP_{i}"] = part((s*0.72,h*0.28,s*0.72),(x,gy+h*0.90,z),"Snow",(0.91,0.93,0.95),False)
 
-# Industrial district.
-for i,x in enumerate((-1650,-850,0,850,1650)):
-    workspace[f"FACTORY_{i}"] = part((560,210,650),(x,36+105,5650),"Metal",(0.30,0.30,0.28))
-    workspace[f"STACK_{i}"] = part((70,380,70),(x+190,36+190,5250),"Brick",(0.26,0.24,0.22))
+# Desert mesas and boulders in territory 6 region.
+for i in range(70):
+    x=3600+(i*601)%3300
+    z=-5000+(i*733)%4300
+    if not island_edge(x,z):
+        continue
+    if math.sqrt((x-5650)**2+(z+2500)**2)<950:
+        continue
+    gy=elevation(x,z)
+    s=90+(i%5)*45
+    h=45+(i%4)*35
+    workspace[f"DESERT_ROCK_{i}"] = part((s,h,s*0.8),(x,gy+h/2,z),"Sand",(0.58,0.34,0.18))
 
-# Player base territory: 12 large flat lots separated from the city.
-plot = 0
-for z in (5000,5800,6600):
-    for x in (-6750,-5750,-4750,-3750):
-        if math.sqrt(x*x+z*z) > 7450:
-            continue
-        plot += 1
-        gy = land_profile(x,z)
-        workspace[f"BASE_PLOT_{plot}"] = part((820,8,620),(x,gy+4,z),"Concrete",(0.27,0.29,0.28))
-        workspace[f"BASE_MARK_{plot}"] = part((70,5,70),(x,gy+10,z),"Neon",(0.08,0.78,0.30),False)
+# Additional natural lakes like the reference map.
+for n,(x,z,sx,sz) in enumerate([
+    (-900,3200,1000,650),(2300,3300,750,520),(-3300,2300,720,500),(3200,-4100,900,650),(-3900,4700,850,600)
+]):
+    workspace[f"LAKE_{n}"] = part((sx,12,sz),(x,18,z),"Glass",(0.035,0.36,0.60),False,0.10)
 
-# Spawn is baked into the safe central park.
-workspace["STATIC_SPAWN"] = {"$className":"SpawnLocation","$properties":{
-    "Anchored":True,
-    "Neutral":True,
-    "CanCollide":True,
-    "Size":[44,2,44],
-    "Position":[0,55,0],
-    "Material":"Neon",
-    "Color":[0.12,0.90,0.35]
+# Spawn in neutral city zone, no structures around it.
+workspace["STATIC_SPAWN"]={"$className":"SpawnLocation","$properties":{
+    "Anchored":True,"Neutral":True,"CanCollide":True,
+    "Size":[42,2,42],"Position":[0,72,0],"Material":"Neon","Color":[0.12,0.90,0.35]
 }}
 
-project = {
-    "name":"GhostOpenWorldOrganic16K",
-    "tree":{
-        "$className":"DataModel",
-        "Workspace":workspace
-    }
+project={
+    "name":"GhostTerritoryIsland12",
+    "tree":{"$className":"DataModel","Workspace":workspace}
 }
 
 print(json.dumps(project,separators=(",",":")))
