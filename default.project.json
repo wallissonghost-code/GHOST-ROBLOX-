@@ -11,7 +11,8 @@
       "CombatService": {"$path": "src/server/CombatService.server.luau"},
       "AutoBaseService": {"$path": "src/server/AutoBaseService.server.luau"},
       "PremiumAssetCatalog": {"$path": "src/server/PremiumAssetCatalog.luau"},
-      "TycoonBuildService": {"$path": "src/server/TycoonBuildService.server.luau"}
+      "TycoonBuildService": {"$path": "src/server/TycoonBuildService.server.luau"},
+      "PremiumWorldService": {"$path": "src/server/PremiumWorldService.server.luau"}
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
