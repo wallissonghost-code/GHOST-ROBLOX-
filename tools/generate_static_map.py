@@ -4,28 +4,29 @@ WORLD = 16384
 HALF = WORLD // 2
 TILE = 512
 WATER_TILE = 1024
-ISLAND_RADIUS = 7480
-CENTER_ISLAND_RADIUS = 1350
-INNER_LAKE_R1 = 1600
-INNER_LAKE_R2 = 2750
+ISLAND_RADIUS = 7350
+CENTER_RADIUS = 1250
+LAKE_INNER = 1500
+LAKE_OUTER = 2600
 
+# Clockwise layout inspired by the approved reference image.
 TERRITORIES = [
-    (1, -5200, 4300, "PLAINS"),
-    (2, -5850, 900, "FOREST"),
-    (3, -4400, -3300, "FOREST"),
-    (4, -700, -5600, "SNOW"),
-    (5, 2800, -4550, "FOREST"),
-    (6, 5650, -2500, "DESERT"),
-    (7, 5800, 1100, "PLAINS"),
-    (8, 4700, 5000, "FOREST"),
-    (9, 900, 6500, "COAST"),
-    (10, 1700, 3850, "FOREST"),
-    (11, -1900, 3900, "FOREST"),
-    (12, -5000, -500, "PLAINS"),
+    (1, -5400,  4200, "PLAINS"),
+    (2, -5900,  1100, "FOREST"),
+    (3, -4500, -3300, "FOREST"),
+    (4,  -900, -5650, "SNOW"),
+    (5,  2700, -4700, "FOREST"),
+    (6,  5650, -2500, "DESERT"),
+    (7,  5900,  1000, "PLAINS"),
+    (8,  4700,  4850, "FOREST"),
+    (9,   900,  6500, "COAST"),
+    (10, 2200,  3900, "PLAINS"),
+    (11,-1900,  4100, "FOREST"),
+    (12,-5000,  -300, "PLAINS"),
 ]
 
 
-def part(size, pos, material="Grass", color=(0.3,0.45,0.22), collide=True, transparency=0, shape=None, rotation=None):
+def part(size, pos, material="Grass", color=(0.28,0.45,0.22), collide=True, transparency=0, orientation=None):
     props = {
         "Anchored": True,
         "CanCollide": collide,
@@ -39,188 +40,180 @@ def part(size, pos, material="Grass", color=(0.3,0.45,0.22), collide=True, trans
         "TopSurface": "Smooth",
         "BottomSurface": "Smooth",
     }
-    if shape:
-        props["Shape"] = shape
-    if rotation:
-        props["Orientation"] = list(rotation)
+    if orientation:
+        props["Orientation"] = list(orientation)
     return {"$className":"Part", "$properties":props}
 
 
-def island_edge(x,z):
-    d = math.sqrt(x*x+z*z)
-    noise = 330*math.sin(z/760.0) + 250*math.cos(x/920.0) + 180*math.sin((x-z)/580.0) + 120*math.cos((x+z)/430.0)
-    return d <= ISLAND_RADIUS + noise
+def distance(x, z, cx=0, cz=0):
+    return math.sqrt((x-cx)**2 + (z-cz)**2)
 
 
-def biome_for(x,z):
-    if z < -4300 and -2200 < x < 1600:
-        return "Snow", (0.82,0.86,0.90), "SNOW"
-    if x > 3400 and z < -900:
-        return "Sand", (0.73,0.54,0.30), "DESERT"
-    if x < -2500 and z < 1500:
-        return "Grass", (0.13,0.31,0.12), "FOREST"
-    if x > 1000 and z < -2500:
-        return "Grass", (0.18,0.38,0.15), "FOREST"
-    if z > 4800:
-        return "Grass", (0.31,0.48,0.23), "COAST"
-    return "Grass", (0.27,0.45,0.21), "PLAINS"
+def coast_limit(x, z):
+    return ISLAND_RADIUS + (
+        260*math.sin(z/820.0)
+        + 210*math.cos(x/940.0)
+        + 140*math.sin((x-z)/670.0)
+        + 90*math.cos((x+z)/510.0)
+    )
 
 
-def elevation(x,z):
-    d = math.sqrt(x*x+z*z)
-    base = 34 + 15*math.sin(x/950.0) + 11*math.cos(z/1120.0) + 7*math.sin((x+z)/720.0)
-    if z < -3600 and -2800 < x < 1500:
-        base += 80 + 45*math.sin(x/430.0) + 35*math.cos(z/510.0)
-    elif x < -3000 and z < -1800:
-        base += 28 + 18*math.sin((x-z)/600.0)
-    elif x > 3600 and z < -1000:
-        base += 16 + 14*math.sin(x/680.0)
-    for _,tx,tz,_ in TERRITORIES:
-        if math.sqrt((x-tx)**2 + (z-tz)**2) < 850:
-            return 42
-    if d < CENTER_ISLAND_RADIUS:
-        return 46
-    return max(18, base)
+def biome(x, z):
+    # North snow range.
+    if z < -4300 and -2500 < x < 1500:
+        return "Snow", (0.86,0.89,0.92), "SNOW"
+    # North-east desert.
+    if x > 3400 and z < -800:
+        return "Sand", (0.74,0.56,0.32), "DESERT"
+    # West / north-west forest.
+    if x < -2500 and z < 1800:
+        return "Grass", (0.13,0.31,0.13), "FOREST"
+    # North-east forest pocket.
+    if x > 800 and z < -2800:
+        return "Grass", (0.17,0.37,0.15), "FOREST"
+    # South coastal plain.
+    if z > 5000:
+        return "Grass", (0.32,0.50,0.25), "COAST"
+    return "Grass", (0.28,0.46,0.22), "PLAINS"
 
 
-def road_between(workspace, name, x1,z1,x2,z2,width=72,y=52):
+def height_at(x, z):
+    # Deliberately low-relief terrain. Nothing here can become a giant wall.
+    h = 22 + 6*math.sin(x/1000.0) + 5*math.cos(z/1150.0) + 3*math.sin((x+z)/900.0)
+    if z < -4300 and -2500 < x < 1500:
+        h += 18 + 7*math.sin(x/700.0)
+    elif x > 3400 and z < -800:
+        h += 5
+    # Flatten territory footprints and central island.
+    for _, tx, tz, _ in TERRITORIES:
+        if distance(x,z,tx,tz) < 950:
+            return 28
+    if distance(x,z) < CENTER_RADIUS + 300:
+        return 30
+    return max(12, min(55, h))
+
+
+def road_between(ws, name, x1,z1,x2,z2,width=70,y=34, material="Concrete", color=(0.08,0.085,0.09)):
     dx, dz = x2-x1, z2-z1
-    length = math.sqrt(dx*dx+dz*dz)
+    length = math.sqrt(dx*dx + dz*dz)
     if length < 1:
         return
-    angle = math.degrees(math.atan2(dx,dz))
     cx, cz = (x1+x2)/2, (z1+z2)/2
-    workspace[name] = part((width,4,length),(cx,y,cz),"Concrete",(0.095,0.10,0.105),True,0,None,(0,angle,0))
+    angle = math.degrees(math.atan2(dx, dz))
+    ws[name] = part((width, 3, length), (cx,y,cz), material, color, True, 0, (0,angle,0))
 
 
-def ring_segments(workspace, prefix, cx, cz, radius, width, y, material, color, segments=32, transparency=0):
-    # A ring made only from short, flat road-like segments. No Cylinder parts.
+def ring(ws, prefix, cx, cz, radius, width, y, color, segments=36, transparency=0.35):
     for i in range(segments):
         a1 = 2*math.pi*i/segments
         a2 = 2*math.pi*(i+1)/segments
         x1, z1 = cx + radius*math.cos(a1), cz + radius*math.sin(a1)
         x2, z2 = cx + radius*math.cos(a2), cz + radius*math.sin(a2)
         dx, dz = x2-x1, z2-z1
-        length = math.sqrt(dx*dx+dz*dz) + 4
-        angle = math.degrees(math.atan2(dx,dz))
+        length = math.sqrt(dx*dx+dz*dz) + 3
         mx, mz = (x1+x2)/2, (z1+z2)/2
-        workspace[f"{prefix}_{i}"] = part((width,4,length),(mx,y,mz),material,color,False,transparency,None,(0,angle,0))
+        angle = math.degrees(math.atan2(dx,dz))
+        ws[f"{prefix}_{i}"] = part((width,3,length),(mx,y,mz),"Neon",color,False,transparency,(0,angle,0))
 
 
-workspace = {"$properties":{"FallenPartsDestroyHeight":-700}}
+workspace = {"$properties":{"FallenPartsDestroyHeight":-600}}
 
-# Ocean.
-idx = 0
+# Ocean floor/water grid.
+water_i = 0
 for x in range(-HALF + WATER_TILE//2, HALF, WATER_TILE):
     for z in range(-HALF + WATER_TILE//2, HALF, WATER_TILE):
-        idx += 1
-        workspace[f"OCEAN_{idx}"] = part((WATER_TILE,18,WATER_TILE),(x,-9,z),"Glass",(0.035,0.29,0.50),False,0.12)
+        water_i += 1
+        workspace[f"OCEAN_{water_i}"] = part(
+            (WATER_TILE, 12, WATER_TILE), (x,-6,z), "Glass", (0.035,0.30,0.53), False, 0.12
+        )
 
-# Main island with the circular inner lake carved out.
-li = 0
+# Single island. The annular lake is carved from the land itself.
+land_i = 0
 for x in range(-HALF + TILE//2, HALF, TILE):
     for z in range(-HALF + TILE//2, HALF, TILE):
-        if not island_edge(x,z):
+        d = distance(x,z)
+        if d > coast_limit(x,z):
             continue
-        d = math.sqrt(x*x+z*z)
-        if INNER_LAKE_R1 < d < INNER_LAKE_R2:
+        if LAKE_INNER < d < LAKE_OUTER:
             continue
-        mat,color,bname = biome_for(x,z)
-        h = elevation(x,z)
-        li += 1
-        workspace[f"LAND_{li}_{bname}"] = part((TILE+10,h,TILE+10),(x,h/2,z),mat,color)
+        mat, color, bname = biome(x,z)
+        h = height_at(x,z)
+        land_i += 1
+        workspace[f"LAND_{land_i}_{bname}"] = part((TILE+6,h,TILE+6),(x,h/2,z),mat,color)
 
-# Central neutral island: only low horizontal Parts.
-workspace["CENTER_ISLAND_BASE"] = part((2400,44,2400),(0,22,0),"Grass",(0.25,0.46,0.22))
-workspace["CENTER_ISLAND_INNER"] = part((1500,10,1500),(0,51,0),"Grass",(0.20,0.42,0.18))
-ring_segments(workspace,"CENTER_RING_ROAD",0,0,980,110,58,"Concrete",(0.10,0.105,0.11),36)
+# Central neutral island only: flat terrain, no structures.
+workspace["NEUTRAL_CENTER"] = part((2200, 10, 2200),(0,35,0),"Grass",(0.24,0.45,0.21))
+ring(workspace,"CENTER_ROAD",0,0,920,92,42,(0.70,0.72,0.74),40,0.0)
 
-# Inner lake water, below all bridge decks.
+# Water around the central island, using flat water sheets only.
 for n,(x,z,sx,sz) in enumerate([
-    (0,-2150,5200,1150),(0,2150,5200,1150),(-2150,0,1150,3000),(2150,0,1150,3000)
+    (0,-2050,5000,1000),
+    (0,2050,5000,1000),
+    (-2050,0,1000,3100),
+    (2050,0,1000,3100),
 ]):
-    workspace[f"INNER_LAKE_{n}"] = part((sx,14,sz),(x,14,z),"Glass",(0.035,0.36,0.60),False,0.10)
+    workspace[f"CENTER_LAKE_{n}"] = part((sx,8,sz),(x,8,z),"Glass",(0.035,0.36,0.62),False,0.08)
 
-# Territory clearings. Flat squares plus segmented boundary rings; no cylinders.
-for tid,tx,tz,bio in TERRITORIES:
-    mat = "Snow" if bio=="SNOW" else "Sand" if bio=="DESERT" else "Grass"
-    col = (0.82,0.86,0.90) if bio=="SNOW" else (0.75,0.55,0.31) if bio=="DESERT" else (0.24,0.45,0.20)
-    workspace[f"TERRITORY_{tid}_CLEARING"] = part((1250,8,1250),(tx,46,tz),mat,col)
-    workspace[f"TERRITORY_{tid}_CENTER"] = part((760,4,760),(tx,52,tz),mat,col)
-    ring_segments(workspace,f"TERRITORY_{tid}_BOUNDARY",tx,tz,690,34,54,"Neon",(0.16,0.62,0.95),28,0.55)
+# Twelve territory zones: only low flat pads and thin boundary markers.
+for tid, tx, tz, bio_name in TERRITORIES:
+    mat = "Snow" if bio_name == "SNOW" else "Sand" if bio_name == "DESERT" else "Grass"
+    col = (0.86,0.89,0.92) if bio_name == "SNOW" else (0.74,0.56,0.32) if bio_name == "DESERT" else (0.25,0.46,0.21)
+    workspace[f"TERRITORY_{tid}_GROUND"] = part((1450,8,1450),(tx,32,tz),mat,col)
+    ring(workspace,f"TERRITORY_{tid}_BORDER",tx,tz,690,28,37,(0.18,0.64,0.95),30,0.48)
 
-# Radial roads from every territory to center + lake bridges.
-for tid,tx,tz,_ in TERRITORIES:
-    d = math.sqrt(tx*tx+tz*tz)
-    ex, ez = tx*(INNER_LAKE_R2/d), tz*(INNER_LAKE_R2/d)
-    road_between(workspace,f"ROAD_T{tid}",tx,tz,ex,ez,76,56)
-    ix, iz = tx*(CENTER_ISLAND_RADIUS/d), tz*(CENTER_ISLAND_RADIUS/d)
-    road_between(workspace,f"BRIDGE_T{tid}",ex,ez,ix,iz,86,60)
+# Roads: territory -> inner lake -> central neutral island.
+for tid, tx, tz, _ in TERRITORIES:
+    d = distance(tx,tz)
+    lake_x, lake_z = tx*(LAKE_OUTER/d), tz*(LAKE_OUTER/d)
+    center_x, center_z = tx*(CENTER_RADIUS/d), tz*(CENTER_RADIUS/d)
+    road_between(workspace,f"ROAD_{tid}_OUTER",tx,tz,lake_x,lake_z,72,35)
+    road_between(workspace,f"BRIDGE_{tid}",lake_x,lake_z,center_x,center_z,82,39,"Concrete",(0.14,0.15,0.16))
 
-# Outer ring-road between the 12 territories.
+# Outer road network linking neighboring territories.
 for i in range(len(TERRITORIES)):
     a = TERRITORIES[i]
     b = TERRITORIES[(i+1)%len(TERRITORIES)]
-    road_between(workspace,f"OUTER_LINK_{i}",a[1],a[2],b[1],b[2],60,54)
+    road_between(workspace,f"OUTER_ROUTE_{i}",a[1],a[2],b[1],b[2],56,34)
 
-# Forest masses.
-for i in range(220):
-    x = -6800 + (i*619) % 6200
-    z = -6100 + (i*883) % 9000
-    if not island_edge(x,z):
-        continue
-    if x > 3400 and z < -900:
-        continue
-    if z < -4300 and -2200 < x < 1600:
-        continue
-    if math.sqrt(x*x+z*z) < 3000:
-        continue
-    if any(math.sqrt((x-tx)**2+(z-tz)**2) < 1000 for _,tx,tz,_ in TERRITORIES):
-        continue
-    gy=elevation(x,z)
-    trunk=65+(i%5)*10
-    workspace[f"TREE_TRUNK_{i}"] = part((18,trunk,18),(x,gy+trunk/2,z),"Wood",(0.24,0.13,0.06))
-    workspace[f"TREE_TOP_{i}"] = part((105,105,105),(x,gy+trunk+35,z),"Grass",(0.07,0.24,0.07),False,0,"Ball")
+# A few low natural relief plates only; no trees, buildings, towers or tall props.
+# Snow ridges.
+for i in range(18):
+    x = -2100 + (i*377)%3400
+    z = -6750 + (i*463)%2100
+    if distance(x,z) < coast_limit(x,z):
+        h = 24 + (i%4)*8
+        workspace[f"SNOW_RIDGE_{i}"] = part((380, h, 300),(x,28+h/2,z),"Snow",(0.82,0.85,0.88))
 
-# Snow mountain range.
-for i in range(52):
-    x = -2100 + (i*733)%3600
-    z = -6900 + (i*547)%2800
-    if not island_edge(x,z):
-        continue
-    gy=elevation(x,z)
-    h=180+(i%7)*90
-    s=150+(i%4)*85
-    workspace[f"SNOW_PEAK_{i}"] = part((s,h,s),(x,gy+h/2,z),"Slate",(0.30,0.32,0.34))
-    workspace[f"SNOW_CAP_{i}"] = part((s*0.72,h*0.28,s*0.72),(x,gy+h*0.90,z),"Snow",(0.91,0.93,0.95),False)
+# Desert mesas kept low and wide.
+for i in range(16):
+    x = 3900 + (i*421)%2700
+    z = -4700 + (i*353)%3200
+    h = 18 + (i%3)*7
+    workspace[f"DESERT_MESA_{i}"] = part((420, h, 330),(x,28+h/2,z),"Sand",(0.66,0.45,0.24))
 
-# Desert rock formations.
-for i in range(70):
-    x=3600+(i*601)%3300
-    z=-5000+(i*733)%4300
-    if not island_edge(x,z):
-        continue
-    if math.sqrt((x-5650)**2+(z+2500)**2)<950:
-        continue
-    gy=elevation(x,z)
-    s=90+(i%5)*45
-    h=45+(i%4)*35
-    workspace[f"DESERT_ROCK_{i}"] = part((s,h,s*0.8),(x,gy+h/2,z),"Sand",(0.58,0.34,0.18))
-
-# Secondary lakes.
+# Small lakes like the reference.
 for n,(x,z,sx,sz) in enumerate([
-    (-900,3200,1000,650),(2300,3300,750,520),(-3300,2300,720,500),(3200,-4100,900,650),(-3900,4700,850,600)
+    (-3100,2300,650,420),
+    (2550,3300,720,480),
+    (2950,-3900,780,520),
+    (-3900,4500,720,470),
 ]):
-    workspace[f"LAKE_{n}"] = part((sx,12,sz),(x,18,z),"Glass",(0.035,0.36,0.60),False,0.10)
+    workspace[f"LAKE_{n}"] = part((sx,7,sz),(x,9,z),"Glass",(0.035,0.36,0.62),False,0.08)
 
-# Neutral spawn, away from any tall geometry.
-workspace["STATIC_SPAWN"]={"$className":"SpawnLocation","$properties":{
-    "Anchored":True,"Neutral":True,"CanCollide":True,
-    "Size":[42,2,42],"Position":[0,58,0],"Material":"Neon","Color":[0.12,0.90,0.35]
+# Spawn in the neutral center.
+workspace["STATIC_SPAWN"] = {"$className":"SpawnLocation","$properties":{
+    "Anchored":True,
+    "Neutral":True,
+    "CanCollide":True,
+    "Size":[40,2,40],
+    "Position":[0,43,0],
+    "Material":"Grass",
+    "Color":[0.24,0.45,0.21],
+    "Transparency":0.15
 }}
 
-project={
-    "name":"GhostTerritoryIsland12Fixed",
+project = {
+    "name":"GhostCleanTerritoryIsland12",
     "tree":{"$className":"DataModel","Workspace":workspace}
 }
 
